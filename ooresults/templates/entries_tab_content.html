@@ -156,7 +156,8 @@ $def with (entries_table)
       <span class="close" onclick="document.getElementById('entr.deleteDialog').style.display='none'">&times;</span>
       <form id="entr.formDelete" class="form-container" onsubmit="entr_submitDelete(); return false;">
         <input id="entr.deleteId" name="id" type="text" hidden/>
-        <p>Confirm: Delete the selected entry?</p>
+        <p>Confirm: Delete the selected entry?<br>
+        <b>Any associated result will also be deleted.</b></p>
         <button type="submit" class="btn">Delete</button>
         <button type="button" class="btn cancel" onclick="document.getElementById('entr.deleteDialog').style.display='none'">Cancel</button>
       </form>
