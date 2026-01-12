@@ -207,6 +207,12 @@ def test_get_competitor_by_name(db, competitor_1_id, competitor_2_id, club_id):
     )
 
 
+def test_if_no_item_found_then_get_competitor_by_name_returns_none(db, competitor_1_id):
+    with db.transaction():
+        c = db.get_competitor_by_name(first_name="abc", last_name="def")
+    assert c is None
+
+
 def test_update_first_added_competitor(db, competitor_1_id, competitor_2_id, club_id):
     with db.transaction():
         db.update_competitor(

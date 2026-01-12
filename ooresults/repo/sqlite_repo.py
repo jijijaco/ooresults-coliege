@@ -646,7 +646,9 @@ class SqliteRepo(Repo):
         else:
             raise KeyError
 
-    def get_competitor_by_name(self, first_name: str, last_name: str) -> CompetitorType:
+    def get_competitor_by_name(
+        self, first_name: str, last_name: str
+    ) -> Optional[CompetitorType]:
         cur = self.db.execute(
             """
             SELECT
@@ -680,7 +682,7 @@ class SqliteRepo(Repo):
                 club_name=c["club_name"],
             )
         else:
-            raise KeyError
+            return None
 
     def add_competitor(
         self,
@@ -779,23 +781,11 @@ class SqliteRepo(Repo):
                 else:
                     club_id = self.add_club(name=c["club"])
 
-            try:
-                c_name = self.get_competitor_by_name(
-                    first_name=c["first_name"],
-                    last_name=c["last_name"],
-                )
-            except KeyError:
-                list_of_competitors.append(
-                    (
-                        c["first_name"],
-                        c["last_name"],
-                        club_id,
-                        c["gender"] if "gender" in c else "",
-                        c["year"] if "year" in c else "",
-                        c["chip"] if "chip" in c else "",
-                    )
-                )
-            else:
+            c_name = self.get_competitor_by_name(
+                first_name=c["first_name"],
+                last_name=c["last_name"],
+            )
+            if c_name:
                 gender = c_name.gender
                 if "gender" in c and c["gender"]:
                     gender = c["gender"]
@@ -813,6 +803,17 @@ class SqliteRepo(Repo):
                     gender=gender,
                     year=year,
                     chip=chip,
+                )
+            else:
+                list_of_competitors.append(
+                    (
+                        c["first_name"],
+                        c["last_name"],
+                        club_id,
+                        c["gender"] if "gender" in c else "",
+                        c["year"] if "year" in c else "",
+                        c["chip"] if "chip" in c else "",
+                    )
                 )
 
         if list_of_competitors:
@@ -1273,21 +1274,11 @@ class SqliteRepo(Repo):
 
             gender = c["gender"] if "gender" in c else ""
             year = c["year"] if "year" in c else None
-            try:
-                competitor = self.get_competitor_by_name(
-                    first_name=c["first_name"],
-                    last_name=c["last_name"],
-                )
-            except KeyError:
-                competitor_id = self.add_competitor(
-                    first_name=c["first_name"],
-                    last_name=c["last_name"],
-                    club_id=club_id,
-                    gender=gender,
-                    year=year,
-                    chip=c["chip"] if "chip" in c else "",
-                )
-            else:
+            competitor = self.get_competitor_by_name(
+                first_name=c["first_name"],
+                last_name=c["last_name"],
+            )
+            if competitor:
                 competitor_id = competitor.id
                 # update gender and year in competitor
                 gender = gender if gender != "" else competitor.gender
@@ -1302,6 +1293,15 @@ class SqliteRepo(Repo):
                         year=year,
                         chip=competitor.chip,
                     )
+            else:
+                competitor_id = self.add_competitor(
+                    first_name=c["first_name"],
+                    last_name=c["last_name"],
+                    club_id=club_id,
+                    gender=gender,
+                    year=year,
+                    chip=c["chip"] if "chip" in c else "",
+                )
 
             # update result
             if c["result"].has_punches():

@@ -205,6 +205,7 @@ def test_get_entries(
         c1 = db.get_competitor_by_name(first_name="Jogi", last_name="Löw")
         c2 = db.get_competitor_by_name(first_name="Angela", last_name="Merkel")
         data = db.get_entries(event_id=event_2_id)
+    assert c1 is not None and c2 is not None
     assert len(data) == 2
 
     assert data[0] == EntryType(
@@ -343,6 +344,7 @@ def test_update_first_added_entry(
         c1 = db.get_competitor_by_name(first_name="Jogi", last_name="Löw")
         c2 = db.get_competitor_by_name(first_name="angela", last_name="merkel")
         data = db.get_entries(event_id=event_2_id)
+    assert c1 is not None and c2 is not None
     assert len(data) == 2
 
     assert data[0] == EntryType(
@@ -397,6 +399,7 @@ def test_update_result_first_added_entry(
         c1 = db.get_competitor_by_name(first_name="Jogi", last_name="Löw")
         c2 = db.get_competitor_by_name(first_name="Angela", last_name="Merkel")
         data = db.get_entries(event_id=event_2_id)
+    assert c1 is not None and c2 is not None
     assert len(data) == 2
 
     assert data[0] == EntryType(
@@ -459,6 +462,7 @@ def test_update_last_added_entry(
         c1 = db.get_competitor_by_name(first_name="jogi", last_name="Loew")
         c2 = db.get_competitor_by_name(first_name="Angela", last_name="Merkel")
         data = db.get_entries(event_id=event_2_id)
+    assert c1 is not None and c2 is not None
     assert len(data) == 2
 
     assert data[0] == EntryType(
@@ -513,6 +517,7 @@ def test_update_result_last_added_entry(
         c1 = db.get_competitor_by_name(first_name="Jogi", last_name="Löw")
         c2 = db.get_competitor_by_name(first_name="Angela", last_name="Merkel")
         data = db.get_entries(event_id=event_2_id)
+    assert c1 is not None and c2 is not None
     assert len(data) == 2
 
     assert data[0] == EntryType(
@@ -723,6 +728,7 @@ def test_add_entry_result(db, event_2_id, class_2_id, club_id, entry_2_id):
     with db.transaction():
         c1 = db.get_competitor_by_name(first_name="Angela", last_name="Merkel")
         data = db.get_entries(event_id=event_2_id)
+    assert c1 is not None
     assert len(data) == 3
 
     assert data[0] == EntryType(
@@ -1180,6 +1186,7 @@ def test_import_entries_with_results(db, event_2_id, class_1_id):
     with db.transaction():
         c1 = db.get_competitor_by_name(first_name="Angela", last_name="Merkel")
         data = db.get_entries(event_id=event_2_id)
+    assert c1 is not None
     assert len(data) == 1
 
     assert data[0] == EntryType(
@@ -1304,6 +1311,7 @@ def test_import_entries_already_exist_with_results(db, event_2_id, class_1_id):
     with db.transaction():
         c1 = db.get_competitor_by_name(first_name="Angela", last_name="Merkel")
         data = db.get_entries(event_id=event_2_id)
+    assert c1 is not None
     assert len(data) == 1
 
     assert data[0] == EntryType(

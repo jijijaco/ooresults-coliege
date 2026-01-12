@@ -24,6 +24,7 @@ from typing import Optional
 from ooresults.otypes import result_type
 from ooresults.otypes import series_type
 from ooresults.otypes.class_params import ClassParams
+from ooresults.otypes.competitor_type import CompetitorType
 from ooresults.otypes.event_type import EventType
 
 
@@ -183,6 +184,11 @@ class Repo:
         raise NotImplementedError
 
     def get_competitor(self, id):
+        raise NotImplementedError
+
+    def get_competitor_by_name(
+        self, first_name: str, last_name: str
+    ) -> Optional[CompetitorType]:
         raise NotImplementedError
 
     def add_competitor(
