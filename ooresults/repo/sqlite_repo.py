@@ -75,14 +75,14 @@ class SqliteRepo(Repo):
                     cur.execute(
                         """
                         CREATE TABLE clubs (
-                            id INTEGER PRIMARY KEY,
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
                             name TEXT UNIQUE
                         )""",
                     )
                     cur.execute(
                         """
                         CREATE TABLE competitors (
-                            id INTEGER PRIMARY KEY,
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
                             first_name TEXT NOT NULL,
                             last_name TEXT NOT NULL,
                             club_id INTEGER REFERENCES clubs(id),
@@ -95,7 +95,7 @@ class SqliteRepo(Repo):
                     cur.execute(
                         """
                         CREATE TABLE events (
-                            id INTEGER PRIMARY KEY,
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
                             name TEXT NOT NULL UNIQUE,
                             date TEXT,
                             key TEXT UNIQUE,
@@ -110,7 +110,7 @@ class SqliteRepo(Repo):
                     cur.execute(
                         """
                         CREATE TABLE courses (
-                            id INTEGER PRIMARY KEY,
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
                             event_id INTEGER NOT NULL REFERENCES events(id),
                             name TEXT NOT NULL,
                             length FLOAT,
@@ -122,7 +122,7 @@ class SqliteRepo(Repo):
                     cur.execute(
                         """
                         CREATE TABLE classes (
-                            id INTEGER PRIMARY KEY,
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
                             event_id INTEGER NOT NULL REFERENCES events(id),
                             name TEXT NOT NULL,
                             short_name TEXT,
@@ -134,7 +134,7 @@ class SqliteRepo(Repo):
                     cur.execute(
                         """
                         CREATE TABLE entries (
-                            id INTEGER PRIMARY KEY,
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
                             event_id INTEGER NOT NULL REFERENCES events(id),
                             competitor_id INTEGER REFERENCES competitors(id),
                             class_id INTEGER REFERENCES classes(id),
