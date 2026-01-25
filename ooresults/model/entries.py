@@ -20,6 +20,7 @@
 import copy
 import datetime
 import enum
+import sqlite3
 from typing import Optional
 from typing import Union
 
@@ -33,6 +34,8 @@ from ooresults.otypes.entry_type import EntryType
 from ooresults.otypes.result_type import PersonRaceResult
 from ooresults.otypes.result_type import ResultStatus
 from ooresults.otypes.result_type import SplitTime
+from ooresults.otypes.start_type import PersonRaceStart
+from ooresults.repo import repo
 from ooresults.repo.repo import TransactionMode
 
 
@@ -70,103 +73,190 @@ def add_or_update_entry(
     start_time: Optional[datetime.datetime],
     result_id: Optional[int],
 ) -> int:
+    """Add a new entry to an event or update an existing entry of an event."""
     #
     # result_id == -1: remove result from entry (store as pseudy result)
     #
 
     with model.db.transaction(mode=TransactionMode.IMMEDIATE):
-        if id is None:
-            id = model.db.add_entry(
-                event_id=event_id,
-                competitor_id=competitor_id,
-                first_name=first_name,
-                last_name=last_name,
-                gender=gender,
-                year=year,
-                class_id=class_id,
-                club_id=club_id,
-                not_competing=not_competing,
-                chip=chip,
-                fields=fields,
-                status=status,
-                start_time=start_time,
-            )
-            result = PersonRaceResult()
-        else:
-            entry = model.db.get_entry(id=id)
-            result = entry.result
-            if result_id is not None:
-                # store result as new entry
-                r = copy.deepcopy(result)
-                r.reset()
-                if r.has_punches():
-                    r.compute_result(controls=[], class_params=ClassParams())
-                    model.db.add_entry_result(
-                        event_id=entry.event_id,
-                        chip=entry.chip,
-                        result=r,
-                        start_time=None,
-                    )
-
-            model.db.update_entry(
-                id=id,
-                first_name=first_name,
-                last_name=last_name,
-                gender=gender,
-                year=year,
-                class_id=class_id,
-                club_id=club_id,
-                not_competing=not_competing,
-                chip=chip,
-                fields=fields,
-                status=status,
-                start_time=start_time,
-            )
-
-        old_status = result.status
-
-        # update entry result
-        if result_id == -1:
-            # result will be removed
-            result = PersonRaceResult()
-        elif result_id is not None:
-            # result will be replaced
-            e = model.db.get_entry(id=result_id)
-            chip = e.chip
-            result = e.result
-            model.db.delete_entry(id=result_id)
-
-        # update result status
-        if (
-            result_id != -1
-            or status != old_status
-            or status == ResultStatus.DISQUALIFIED
-        ):
-            result.status = status
-
-        # compute new result
         try:
-            class_ = model.db.get_class(id=class_id)
-            course_id = class_.course_id
-            class_params = class_.params
-            controls = model.db.get_course(id=course_id).controls
-        except KeyError:
-            class_params = ClassParams()
-            controls = []
+            if id is None:
+                if competitor_id is None:
+                    com = model.db.get_competitor_by_name(
+                        first_name=first_name,
+                        last_name=last_name,
+                    )
+                    if com:
+                        competitor_id = com.id
+                        if gender == "":
+                            gender = com.gender
+                        if year is None:
+                            year = com.year
+                        if chip == "":
+                            chip = com.chip
+                        if club_id is None:
+                            club_id = com.club_id
+                    else:
+                        competitor_id = model.db.add_competitor(
+                            first_name=first_name,
+                            last_name=last_name,
+                            club_id=club_id,
+                            gender=gender,
+                            year=year,
+                            chip=chip,
+                        )
 
-        result.compute_result(
-            controls=controls,
-            class_params=class_params,
-            start_time=start_time,
-            year=year,
-            gender=gender if gender != "" else None,
-        )
-        model.db.update_entry_result(
-            id=id,
-            chip=chip,
-            result=result,
-            start_time=start_time,
-        )
+                competitor = model.db.get_competitor(id=competitor_id)
+                if competitor.club_id is None:
+                    competitor.club_id = club_id
+                if competitor.chip == "":
+                    competitor.chip = chip
+                model.db.update_competitor(
+                    id=competitor.id,
+                    first_name=first_name,
+                    last_name=last_name,
+                    gender=gender,
+                    year=year,
+                    club_id=competitor.club_id,
+                    chip=competitor.chip,
+                )
+
+                id = model.db.add_entry(
+                    event_id=event_id,
+                    competitor_id=competitor_id,
+                    class_id=class_id,
+                    club_id=club_id,
+                    not_competing=not_competing,
+                    chip=chip,
+                    fields=fields,
+                    result=PersonRaceResult(status=status),
+                    start=PersonRaceStart(start_time=start_time),
+                )
+                result = PersonRaceResult()
+            else:
+                entry = model.db.get_entry(id=id)
+                result = entry.result
+                if result_id is not None:
+                    # store result as new entry
+                    r = copy.deepcopy(result)
+                    r.reset()
+                    if r.has_punches():
+                        r.compute_result(controls=[], class_params=ClassParams())
+                        model.db.add_entry_result(
+                            event_id=entry.event_id,
+                            chip=entry.chip,
+                            result=r,
+                            start=PersonRaceStart(),
+                        )
+
+                competitor = model.db.get_competitor(id=entry.competitor_id)
+                model.db.update_competitor(
+                    id=competitor.id,
+                    first_name=first_name,
+                    last_name=last_name,
+                    gender=gender,
+                    year=year,
+                    club_id=competitor.club_id,
+                    chip=competitor.chip,
+                )
+
+                r = copy.deepcopy(entry.result)
+                r.status = status
+                s = copy.deepcopy(entry.start)
+                s.start_time = start_time
+
+                model.db.update_entry(
+                    id=id,
+                    class_id=class_id,
+                    club_id=club_id,
+                    not_competing=not_competing,
+                    chip=chip,
+                    fields=fields,
+                    result=r,
+                    start=s,
+                )
+
+            old_status = result.status
+
+            # update result if result_id is defined
+            if result_id == -1:
+                # result will be removed
+                result = PersonRaceResult()
+            elif result_id is not None:
+                # result will be replaced
+                try:
+                    result_entry = model.db.get_entry(id=result_id)
+                    model.db.delete_entry(id=result_id)
+
+                    chip = result_entry.chip
+                    result = result_entry.result
+                except KeyError:
+                    raise repo.ConstraintError("Result deleted")
+
+            # update result status
+            if (
+                result_id != -1
+                or status != old_status
+                or status == ResultStatus.DISQUALIFIED
+            ):
+                result.status = status
+
+            # compute new result
+            try:
+                class_ = model.db.get_class(id=class_id)
+                course_id = class_.course_id
+                class_params = class_.params
+                controls = model.db.get_course(id=course_id).controls
+            except KeyError:
+                class_params = ClassParams()
+                controls = []
+
+            result.compute_result(
+                controls=controls,
+                class_params=class_params,
+                start_time=start_time,
+                year=year,
+                gender=gender if gender != "" else None,
+            )
+            model.db.update_entry_result(
+                id=id,
+                chip=chip,
+                result=result,
+                start=PersonRaceStart(start_time=start_time),
+            )
+
+        except (sqlite3.IntegrityError, repo.ConstraintError, KeyError):
+            # check if the event still exists
+            model.db.get_event(id=event_id)
+
+            # check if the entry still exists
+            if id is not None:
+                try:
+                    model.db.get_entry(id=id)
+                except KeyError:
+                    raise repo.ConstraintError("Entry deleted")
+
+            # check if the competitor still exists
+            if competitor_id is not None:
+                try:
+                    model.db.get_competitor(id=competitor_id)
+                except KeyError:
+                    raise repo.ConstraintError("Competitor deleted")
+
+            # check if the class still exists
+            try:
+                model.db.get_class(id=class_id)
+            except KeyError:
+                raise repo.ConstraintError("Class deleted")
+
+            # check if the club still exists
+            if club_id is not None:
+                try:
+                    model.db.get_club(id=club_id)
+                except KeyError:
+                    raise repo.ConstraintError("Club deleted")
+
+            raise
 
     cached_result.clear_cache(event_id=event_id, entry_id=id)
     return id
@@ -268,7 +358,7 @@ def edit_entry_result(
             id=entry.id,
             chip=entry.chip,
             result=result,
-            start_time=entry.start.start_time,
+            start=entry.start,
         )
 
     cached_result.clear_cache(event_id=event_id, entry_id=entry_id)

@@ -1022,56 +1022,15 @@ class SqliteRepo(Repo):
     def add_entry(
         self,
         event_id: int,
-        competitor_id: Optional[int],
-        first_name: str,
-        last_name: str,
-        gender: str,
-        year: Optional[int],
+        competitor_id: int,
         class_id: int,
         club_id: Optional[int],
         not_competing: bool,
         chip: str,
         fields: dict[int, str],
-        status: result_type.ResultStatus,
-        start_time: Optional[datetime.datetime],
+        result: result_type.PersonRaceResult,
+        start: start_type.PersonRaceStart,
     ) -> int:
-        # check if the event still exists
-        self.get_event(id=event_id)
-
-        if competitor_id is None:
-            for com in self.get_competitors():
-                if com.first_name == first_name and com.last_name == last_name:
-                    competitor_id = com.id
-                    if gender == "":
-                        gender = com.gender
-                    if year is None:
-                        year = com.year
-                    if chip == "":
-                        chip = com.chip
-                    if club_id is None:
-                        club_id = com.club_id
-                    break
-            else:
-                competitor_id = self.add_competitor(
-                    first_name=first_name,
-                    last_name=last_name,
-                    club_id=club_id,
-                    gender=gender,
-                    year=year,
-                    chip=chip,
-                )
-
-        competitor = self.get_competitor(id=competitor_id)
-        self.update_competitor(
-            id=competitor.id,
-            first_name=first_name,
-            last_name=last_name,
-            gender=gender,
-            year=year,
-            club_id=(competitor.club_id if competitor.club_id is not None else club_id),
-            chip=competitor.chip if competitor.chip != "" else chip,
-        )
-
         # check if competitor is already entered for this event
         entry_ids = self.get_entry_ids_by_competitor(
             event_id=event_id,
@@ -1100,8 +1059,8 @@ class SqliteRepo(Repo):
                 class_id,
                 club_id,
                 not_competing,
-                result_type.PersonRaceResult(status=status).to_json(),
-                start_type.PersonRaceStart(start_time=start_time).to_json(),
+                result.to_json(),
+                start.to_json(),
                 chip,
                 json.dumps(fields),
             ),
@@ -1112,8 +1071,8 @@ class SqliteRepo(Repo):
         self,
         event_id: int,
         chip: str,
-        start_time: Optional[datetime.datetime],
         result: result_type.PersonRaceResult,
+        start: start_type.PersonRaceStart,
     ) -> int:
         # check if the event still exists
         self.get_event(id=event_id)
@@ -1139,7 +1098,7 @@ class SqliteRepo(Repo):
                 None,
                 False,
                 result.to_json(),
-                start_type.PersonRaceStart(start_time=start_time).to_json(),
+                start.to_json(),
                 chip,
                 json.dumps({}),
             ),
@@ -1149,34 +1108,14 @@ class SqliteRepo(Repo):
     def update_entry(
         self,
         id: int,
-        first_name: str,
-        last_name: str,
-        gender: str,
-        year: Optional[int],
         class_id: int,
         club_id: Optional[int],
         not_competing: bool,
         chip: str,
         fields: dict[int, str],
-        status: result_type.ResultStatus,
-        start_time: Optional[datetime.datetime],
+        result: result_type.PersonRaceResult,
+        start: start_type.PersonRaceStart,
     ) -> None:
-        entry = self.get_entry(id=id)
-        competitor = self.get_competitor(id=entry.competitor_id)
-        self.update_competitor(
-            id=competitor.id,
-            first_name=first_name,
-            last_name=last_name,
-            gender=gender,
-            year=year,
-            club_id=competitor.club_id,
-            chip=competitor.chip,
-        )
-
-        result = entry.result
-        result.status = status
-        start = entry.start
-        start.start_time = start_time
         cur = self.db.execute(
             """
             UPDATE entries SET
@@ -1206,12 +1145,9 @@ class SqliteRepo(Repo):
         self,
         id: int,
         chip: str,
-        start_time: Optional[datetime.datetime],
         result: result_type.PersonRaceResult,
+        start: start_type.PersonRaceStart,
     ) -> None:
-        entry = self.get_entry(id=id)
-        start = entry.start
-        start.start_time = start_time
         cur = self.db.execute(
             """
             UPDATE entries SET

@@ -23,6 +23,7 @@ from typing import Optional
 
 from ooresults.otypes import result_type
 from ooresults.otypes import series_type
+from ooresults.otypes import start_type
 from ooresults.otypes.class_params import ClassParams
 from ooresults.otypes.competitor_type import CompetitorType
 from ooresults.otypes.event_type import EventType
@@ -226,34 +227,26 @@ class Repo:
         self,
         event_id: int,
         competitor_id: Optional[int],
-        first_name: str,
-        last_name: str,
-        gender: str,
-        year: Optional[int],
         class_id: int,
         club_id: Optional[int],
         not_competing: bool,
         chip: str,
         fields: dict[int, str],
-        status: result_type.ResultStatus,
-        start_time: Optional[datetime.datetime],
+        result: result_type.PersonRaceResult,
+        start: start_type.PersonRaceStart,
     ) -> int:
         raise NotImplementedError
 
     def update_entry(
         self,
         id: int,
-        first_name: str,
-        last_name: str,
-        gender: str,
-        year: Optional[int],
         class_id: int,
         club_id: Optional[int],
         not_competing: bool,
         chip: str,
         fields: dict[int, str],
-        status: result_type.ResultStatus,
-        start_time: Optional[datetime.datetime],
+        result: result_type.PersonRaceResult,
+        start: start_type.PersonRaceStart,
     ) -> None:
         raise NotImplementedError
 
@@ -266,8 +259,8 @@ class Repo:
         self,
         event_id: int,
         chip,
-        start_time: Optional[datetime.datetime],
         result: result_type.PersonRaceResult,
+        start: start_type.PersonRaceStart,
     ) -> int:
         raise NotImplementedError
 
@@ -275,8 +268,8 @@ class Repo:
         self,
         id: int,
         chip,
-        start_time: Optional[datetime.datetime],
         result: result_type.PersonRaceResult,
+        start: start_type.PersonRaceStart,
     ) -> None:
         raise NotImplementedError
 

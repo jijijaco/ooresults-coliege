@@ -106,22 +106,59 @@ def class_id_without_course(db: SqliteRepo, event_id: int) -> int:
 
 
 @pytest.fixture
-def entry_1(db: SqliteRepo, event_id: int, class_id: int) -> EntryType:
+def competitor_1_id(db: SqliteRepo) -> int:
+    with db.transaction():
+        return db.add_competitor(
+            first_name="Robert",
+            last_name="Lewandowski",
+            club_id=None,
+            gender="",
+            year=None,
+            chip="",
+        )
+
+
+@pytest.fixture
+def competitor_2_id(db: SqliteRepo) -> int:
+    with db.transaction():
+        return db.add_competitor(
+            first_name="Jogi",
+            last_name="Löw",
+            club_id=None,
+            gender="M",
+            year=None,
+            chip="",
+        )
+
+
+@pytest.fixture
+def competitor_3_id(db: SqliteRepo) -> int:
+    with db.transaction():
+        return db.add_competitor(
+            first_name="Angela",
+            last_name="Merkel",
+            club_id=None,
+            gender="F",
+            year=1957,
+            chip="1234567",
+        )
+
+
+@pytest.fixture
+def entry_1(
+    db: SqliteRepo, event_id: int, class_id: int, competitor_1_id: int
+) -> EntryType:
     with db.transaction():
         id = db.add_entry(
             event_id=event_id,
-            competitor_id=None,
-            first_name="Robert",
-            last_name="Lewandowski",
-            gender="",
-            year=None,
+            competitor_id=competitor_1_id,
             class_id=class_id,
             club_id=None,
             not_competing=False,
             chip="12734",
             fields={},
-            status=ResultStatus.INACTIVE,
-            start_time=None,
+            result=PersonRaceResult(),
+            start=PersonRaceStart(),
         )
         entry = db.get_entry(id=id)
         return copy.deepcopy(entry)
@@ -129,45 +166,39 @@ def entry_1(db: SqliteRepo, event_id: int, class_id: int) -> EntryType:
 
 @pytest.fixture
 def entry_1_without_course(
-    db: SqliteRepo, event_id: int, class_id_without_course: int
+    db: SqliteRepo, event_id: int, class_id_without_course: int, competitor_1_id: int
 ) -> EntryType:
     with db.transaction():
         id = db.add_entry(
             event_id=event_id,
-            competitor_id=None,
-            first_name="Robert",
-            last_name="Lewandowski",
-            gender="",
-            year=None,
+            competitor_id=competitor_1_id,
             class_id=class_id_without_course,
             club_id=None,
             not_competing=False,
             chip="12734",
             fields={},
-            status=ResultStatus.INACTIVE,
-            start_time=None,
+            result=PersonRaceResult(),
+            start=PersonRaceStart(),
         )
         entry = db.get_entry(id=id)
         return copy.deepcopy(entry)
 
 
 @pytest.fixture
-def entry_2(db: SqliteRepo, event_id: int, class_id: int) -> EntryType:
+def entry_2(
+    db: SqliteRepo, event_id: int, class_id: int, competitor_2_id: int
+) -> EntryType:
     with db.transaction():
         id = db.add_entry(
             event_id=event_id,
-            competitor_id=None,
-            first_name="Yogi",
-            last_name="Löw",
-            gender="N",
-            year=None,
+            competitor_id=competitor_2_id,
             class_id=class_id,
             club_id=None,
             not_competing=False,
             chip="7410",
             fields={},
-            status=ResultStatus.INACTIVE,
-            start_time=None,
+            result=PersonRaceResult(),
+            start=PersonRaceStart(),
         )
         entry = db.get_entry(id=id)
         return copy.deepcopy(entry)
@@ -181,7 +212,6 @@ def entry_2_with_result(
         db.update_entry_result(
             id=entry_2.id,
             chip=entry_2.chip,
-            start_time=entry_2.start.start_time,
             result=PersonRaceResult(
                 status=ResultStatus.OK,
                 start_time=s1,
@@ -215,28 +245,27 @@ def entry_2_with_result(
                     ),
                 ],
             ),
+            start=entry_2.start,
         )
         entry = db.get_entry(id=entry_2.id)
         return copy.deepcopy(entry)
 
 
 @pytest.fixture
-def entry_3(db: SqliteRepo, event_id: int, class_id: int) -> EntryType:
+def entry_3(
+    db: SqliteRepo, event_id: int, class_id: int, competitor_3_id: int
+) -> EntryType:
     with db.transaction():
         id = db.add_entry(
             event_id=event_id,
-            competitor_id=None,
-            first_name="Angela",
-            last_name="Merkel",
-            gender="F",
-            year=1957,
+            competitor_id=competitor_3_id,
             class_id=class_id,
             club_id=None,
             not_competing=False,
             chip="12734",
             fields={},
-            status=ResultStatus.INACTIVE,
-            start_time=None,
+            result=PersonRaceResult(),
+            start=PersonRaceStart(),
         )
         entry = db.get_entry(id=id)
         return copy.deepcopy(entry)
@@ -277,7 +306,7 @@ def unassigned_entry(db: SqliteRepo, event_id: int) -> EntryType:
             event_id=event_id,
             chip="7410",
             result=result,
-            start_time=None,
+            start=PersonRaceStart(),
         )
         entry = db.get_entry(id=id)
         return copy.deepcopy(entry)
@@ -335,7 +364,7 @@ def test_assign_to_entry_if_cardnumber_is_unique(
         "entryTime": entry_time,
         "eventId": event_id,
         "controlCard": "7410",
-        "firstName": "Yogi",
+        "firstName": "Jogi",
         "lastName": "Löw",
         "club": None,
         "class": "Elite",
@@ -440,7 +469,7 @@ def test_assign_to_entry_if_cardnumber_is_unique_but_finish_time_is_missing(
         "entryTime": entry_time,
         "eventId": event_id,
         "controlCard": "7410",
-        "firstName": "Yogi",
+        "firstName": "Jogi",
         "lastName": "Löw",
         "club": None,
         "class": "Elite",
@@ -545,7 +574,7 @@ def test_assign_to_entry_if_cardnumber_is_unique_but_start_time_is_missing(
         "entryTime": entry_time,
         "eventId": event_id,
         "controlCard": "7410",
-        "firstName": "Yogi",
+        "firstName": "Jogi",
         "lastName": "Löw",
         "club": None,
         "class": "Elite",
@@ -638,7 +667,7 @@ def test_assign_to_entry_if_cardnumber_is_unique_but_controls_are_missing(
         "entryTime": entry_time,
         "eventId": event_id,
         "controlCard": "7410",
-        "firstName": "Yogi",
+        "firstName": "Jogi",
         "lastName": "Löw",
         "club": None,
         "class": "Elite",
@@ -745,7 +774,7 @@ def test_assign_to_entry_and_delete_unnamed_entry_with_same_result(
         "entryTime": entry_time,
         "eventId": event_id,
         "controlCard": "7410",
-        "firstName": "Yogi",
+        "firstName": "Jogi",
         "lastName": "Löw",
         "club": None,
         "class": "Elite",
@@ -1285,7 +1314,7 @@ def test_use_already_assigned_entry_if_it_has_the_same_result(
         "entryTime": entry_time,
         "eventId": event_id,
         "controlCard": "7410",
-        "firstName": "Yogi",
+        "firstName": "Jogi",
         "lastName": "Löw",
         "club": None,
         "class": "Elite",

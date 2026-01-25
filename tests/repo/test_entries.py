@@ -31,8 +31,10 @@ from ooresults.otypes.class_type import ClassInfoType
 from ooresults.otypes.club_type import ClubType
 from ooresults.otypes.competitor_type import CompetitorType
 from ooresults.otypes.entry_type import EntryType
+from ooresults.otypes.result_type import PersonRaceResult
 from ooresults.otypes.result_type import ResultStatus
 from ooresults.otypes.result_type import SpStatus
+from ooresults.otypes.start_type import PersonRaceStart
 from ooresults.repo.sqlite_repo import SqliteRepo
 
 
@@ -49,7 +51,7 @@ def db() -> Iterator[SqliteRepo]:
 
 
 @pytest.fixture
-def event_1_id(db):
+def event_1_id(db: SqliteRepo) -> int:
     with db.transaction():
         return db.add_event(
             name="event 1",
@@ -62,7 +64,7 @@ def event_1_id(db):
 
 
 @pytest.fixture
-def event_2_id(db):
+def event_2_id(db: SqliteRepo) -> int:
     with db.transaction():
         return db.add_event(
             name="event 2",
@@ -75,7 +77,7 @@ def event_2_id(db):
 
 
 @pytest.fixture
-def class_1_id(db, event_2_id):
+def class_1_id(db: SqliteRepo, event_2_id: int) -> int:
     with db.transaction():
         return db.add_class(
             event_id=event_2_id,
@@ -87,7 +89,7 @@ def class_1_id(db, event_2_id):
 
 
 @pytest.fixture
-def class_2_id(db, event_2_id):
+def class_2_id(db: SqliteRepo, event_2_id: int) -> int:
     with db.transaction():
         return db.add_class(
             event_id=event_2_id,
@@ -99,7 +101,7 @@ def class_2_id(db, event_2_id):
 
 
 @pytest.fixture
-def club_id(db):
+def club_id(db: SqliteRepo) -> int:
     with db.transaction():
         return db.add_club(
             name="OL Bundestag",
@@ -107,88 +109,95 @@ def club_id(db):
 
 
 @pytest.fixture
-def competitor_1_id(db, club_id):
+def competitor_1_id(db: SqliteRepo) -> int:
+    with db.transaction():
+        return db.add_competitor(
+            first_name="Robert",
+            last_name="Lewandowski",
+            club_id=None,
+            gender="",
+            year=None,
+            chip="",
+        )
+
+
+@pytest.fixture
+def competitor_2_id(db: SqliteRepo, club_id: int) -> int:
     with db.transaction():
         return db.add_competitor(
             first_name="Angela",
             last_name="Merkel",
             club_id=club_id,
-            gender="",
-            year=None,
+            gender="F",
+            year=1957,
             chip="1234567",
         )
 
 
 @pytest.fixture
-def competitor_2_id(db):
+def competitor_3_id(db: SqliteRepo) -> int:
     with db.transaction():
         return db.add_competitor(
             first_name="Jogi",
             last_name="Löw",
             club_id=None,
-            gender="",
+            gender="M",
             year=None,
             chip="",
         )
 
 
 @pytest.fixture
-def entry_1_id(db, event_1_id, class_1_id, club_id):
+def entry_1_id(
+    db: SqliteRepo, event_1_id: int, class_1_id: int, club_id: int, competitor_1_id: int
+) -> int:
     with db.transaction():
         return db.add_entry(
             event_id=event_1_id,
-            competitor_id=None,
-            first_name="Robert",
-            last_name="Lewandowski",
-            gender="",
-            year=None,
+            competitor_id=competitor_1_id,
             class_id=class_1_id,
             club_id=club_id,
             not_competing=False,
             chip="9999999",
             fields={0: "ab", 1: "cd"},
-            status=ResultStatus.INACTIVE,
-            start_time=None,
+            result=PersonRaceResult(),
+            start=PersonRaceStart(),
         )
 
 
 @pytest.fixture
-def entry_2_id(db, event_2_id, class_2_id, club_id):
+def entry_2_id(
+    db: SqliteRepo, event_2_id: int, class_2_id: int, club_id: int, competitor_2_id: int
+) -> int:
     with db.transaction():
         return db.add_entry(
             event_id=event_2_id,
-            competitor_id=None,
-            first_name="Angela",
-            last_name="Merkel",
-            gender="F",
-            year=1957,
+            competitor_id=competitor_2_id,
             class_id=class_2_id,
             club_id=club_id,
             not_competing=True,
             chip="9999999",
             fields={0: "x"},
-            status=ResultStatus.DID_NOT_START,
-            start_time=S1,
+            result=PersonRaceResult(status=ResultStatus.DID_NOT_START),
+            start=PersonRaceStart(start_time=S1),
         )
 
 
 @pytest.fixture
-def entry_3_id(db, event_2_id, class_2_id):
+def entry_3_id(
+    db: SqliteRepo, event_2_id: int, class_2_id: int, competitor_3_id: int
+) -> int:
     with db.transaction():
         return db.add_entry(
             event_id=event_2_id,
-            competitor_id=None,
-            first_name="Jogi",
-            last_name="Löw",
-            gender="M",
-            year=None,
+            competitor_id=competitor_3_id,
             class_id=class_2_id,
             club_id=None,
             not_competing=False,
             chip="",
             fields={},
-            status=ResultStatus.INACTIVE,
-            start_time=None,
+            result=PersonRaceResult(),
+            start=PersonRaceStart(),
         )
 
 
@@ -257,7 +266,7 @@ def test_get_first_added_entry(
         last_name="Merkel",
         gender="F",
         year=1957,
-        chip="9999999",
+        chip="1234567",
         club_id=club_id,
         club_name="OL Bundestag",
     )
@@ -323,28 +332,45 @@ def test_get_last_added_entry(
 
 
 def test_update_first_added_entry(
-    db, event_2_id, class_1_id, class_2_id, entry_2_id, entry_3_id
+    db, event_2_id, class_1_id, class_2_id, club_id, entry_2_id, entry_3_id
 ):
     with db.transaction():
         db.update_entry(
             id=entry_2_id,
-            first_name="angela",
-            last_name="merkel",
-            gender="",
-            year=None,
             class_id=class_1_id,
             club_id=None,
             not_competing=False,
             chip="7788",
             fields={},
-            status=ResultStatus.DISQUALIFIED,
-            start_time=S2,
+            result=result_type.PersonRaceResult(status=ResultStatus.DISQUALIFIED),
+            start=start_type.PersonRaceStart(start_time=S2),
         )
+
     with db.transaction():
         c1 = db.get_competitor_by_name(first_name="Jogi", last_name="Löw")
-        c2 = db.get_competitor_by_name(first_name="angela", last_name="merkel")
+        c2 = db.get_competitor_by_name(first_name="Angela", last_name="Merkel")
         data = db.get_entries(event_id=event_2_id)
-    assert c1 is not None and c2 is not None
+
+    assert c1 == CompetitorType(
+        id=c1.id,
+        first_name="Jogi",
+        last_name="Löw",
+        gender="M",
+        year=None,
+        chip="",
+        club_id=None,
+        club_name=None,
+    )
+    assert c2 == CompetitorType(
+        id=c2.id,
+        first_name="Angela",
+        last_name="Merkel",
+        gender="F",
+        year=1957,
+        chip="1234567",
+        club_id=club_id,
+        club_name="OL Bundestag",
+    )
     assert len(data) == 2
 
     assert data[0] == EntryType(
@@ -369,10 +395,10 @@ def test_update_first_added_entry(
         id=entry_2_id,
         event_id=event_2_id,
         competitor_id=c2.id,
-        first_name="angela",
-        last_name="merkel",
-        gender="",
-        year=None,
+        first_name="Angela",
+        last_name="Merkel",
+        gender="F",
+        year=1957,
         class_id=class_1_id,
         class_name="Class 1",
         not_competing=False,
@@ -392,8 +418,8 @@ def test_update_result_first_added_entry(
         db.update_entry_result(
             id=entry_2_id,
             chip="7788",
-            start_time=S2,
             result=result_type.PersonRaceResult(status=ResultStatus.DISQUALIFIED),
+            start=PersonRaceStart(start_time=S2),
         )
     with db.transaction():
         c1 = db.get_competitor_by_name(first_name="Jogi", last_name="Löw")
@@ -446,33 +472,49 @@ def test_update_last_added_entry(
     with db.transaction():
         db.update_entry(
             id=entry_3_id,
-            first_name="jogi",
-            last_name="Loew",
-            gender="M",
-            year=1960,
             class_id=class_1_id,
             club_id=club_id,
             not_competing=False,
             chip="4455",
             fields={},
-            status=ResultStatus.DID_NOT_START,
-            start_time=S3,
+            result=result_type.PersonRaceResult(status=ResultStatus.DID_NOT_START),
+            start=start_type.PersonRaceStart(start_time=S3),
         )
     with db.transaction():
-        c1 = db.get_competitor_by_name(first_name="jogi", last_name="Loew")
+        c1 = db.get_competitor_by_name(first_name="Jogi", last_name="Löw")
         c2 = db.get_competitor_by_name(first_name="Angela", last_name="Merkel")
         data = db.get_entries(event_id=event_2_id)
-    assert c1 is not None and c2 is not None
+
+    assert c1 == CompetitorType(
+        id=c1.id,
+        first_name="Jogi",
+        last_name="Löw",
+        gender="M",
+        year=None,
+        chip="",
+        club_id=None,
+        club_name=None,
+    )
+    assert c2 == CompetitorType(
+        id=c2.id,
+        first_name="Angela",
+        last_name="Merkel",
+        gender="F",
+        year=1957,
+        chip="1234567",
+        club_id=club_id,
+        club_name="OL Bundestag",
+    )
     assert len(data) == 2
 
     assert data[0] == EntryType(
         id=entry_3_id,
         event_id=event_2_id,
         competitor_id=c1.id,
-        first_name="jogi",
-        last_name="Loew",
+        first_name="Jogi",
+        last_name="Löw",
         gender="M",
-        year=1960,
+        year=None,
         class_id=class_1_id,
         class_name="Class 1",
         not_competing=False,
@@ -511,7 +553,7 @@ def test_update_result_last_added_entry(
             id=entry_3_id,
             chip="4455",
             result=result_type.PersonRaceResult(status=ResultStatus.DID_NOT_START),
-            start_time=S3,
+            start=PersonRaceStart(start_time=S3),
         )
     with db.transaction():
         c1 = db.get_competitor_by_name(first_name="Jogi", last_name="Löw")
@@ -558,171 +600,19 @@ def test_update_result_last_added_entry(
     )
 
 
-def test_add_existing_competitor_but_do_not_update_competitors_chip_and_club_if_alread_defined(
-    db, event_1_id, class_1_id, competitor_1_id, club_id
-):
-    with db.transaction():
-        entry_id = db.add_entry(
-            event_id=event_1_id,
-            competitor_id=competitor_1_id,
-            first_name="Angela",
-            last_name="Merkel",
-            gender="W",
-            year=None,
-            class_id=class_1_id,
-            club_id=club_id,
-            not_competing=False,
-            chip="999",
-            fields={},
-            status=result_type.ResultStatus.INACTIVE,
-            start_time=None,
-        )
-    with db.transaction():
-        data = db.get_entries(event_id=event_1_id)
-    assert len(data) == 1
-
-    assert data[0] == EntryType(
-        id=entry_id,
-        event_id=event_1_id,
-        competitor_id=competitor_1_id,
-        first_name="Angela",
-        last_name="Merkel",
-        gender="W",
-        year=None,
-        class_id=class_1_id,
-        class_name="Class 1",
-        not_competing=False,
-        chip="999",
-        fields={},
-        result=result_type.PersonRaceResult(),
-        start=start_type.PersonRaceStart(),
-        club_id=club_id,
-        club_name="OL Bundestag",
-    )
-
-    with db.transaction():
-        data = db.get_competitor(id=competitor_1_id)
-    assert data == CompetitorType(
-        id=competitor_1_id,
-        first_name="Angela",
-        last_name="Merkel",
-        gender="W",
-        year=None,
-        chip="1234567",
-        club_id=club_id,
-        club_name="OL Bundestag",
-    )
-
-
-def test_add_existing_competitor_and_update_competitors_chip_and_club_if_undefined(
-    db, event_1_id, class_1_id, competitor_2_id, club_id
-):
-    with db.transaction():
-        entry_id = db.add_entry(
-            event_id=event_1_id,
-            competitor_id=competitor_2_id,
-            first_name="Yogi",
-            last_name="Löw",
-            gender="M",
-            year=1975,
-            class_id=class_1_id,
-            club_id=club_id,
-            not_competing=False,
-            chip="999",
-            fields={},
-            status=result_type.ResultStatus.INACTIVE,
-            start_time=None,
-        )
-    with db.transaction():
-        data = db.get_entries(event_id=event_1_id)
-    assert len(data) == 1
-
-    assert data[0] == EntryType(
-        id=entry_id,
-        event_id=event_1_id,
-        competitor_id=competitor_2_id,
-        first_name="Yogi",
-        last_name="Löw",
-        gender="M",
-        year=1975,
-        class_id=class_1_id,
-        class_name="Class 1",
-        not_competing=False,
-        chip="999",
-        fields={},
-        result=result_type.PersonRaceResult(),
-        start=start_type.PersonRaceStart(),
-        club_id=club_id,
-        club_name="OL Bundestag",
-    )
-
-    with db.transaction():
-        data = db.get_competitor(id=competitor_2_id)
-    assert data == CompetitorType(
-        id=competitor_2_id,
-        first_name="Yogi",
-        last_name="Löw",
-        gender="M",
-        year=1975,
-        chip="999",
-        club_id=club_id,
-        club_name="OL Bundestag",
-    )
-
-
-@pytest.mark.parametrize("number", [0, 1])
-def test_number_of_competitors(
-    number: int,
-    db: SqliteRepo,
-    event_1_id: int,
-    class_1_id: int,
-    competitor_1_id: int,
-    club_id: int,
-):
-    ids = []
-    with db.transaction():
-        for i in range(number):
-            ids.append(
-                db.add_entry(
-                    event_id=event_1_id,
-                    competitor_id=competitor_1_id,
-                    first_name="Angela",
-                    last_name="Merkel",
-                    gender="",
-                    year=None,
-                    class_id=class_1_id,
-                    club_id=club_id,
-                    not_competing=False,
-                    chip="1234567",
-                    fields={},
-                    status=result_type.ResultStatus.INACTIVE,
-                    start_time=None,
-                )
-            )
-
-    with db.transaction():
-        data = db.get_entry_ids_by_competitor(
-            event_id=event_1_id, competitor_id=competitor_1_id
-        )
-    assert len(data) == number
-    assert len(set(data)) == number
-    for i in ids:
-        assert i in data
-
-
 def test_add_entry_result(db, event_2_id, class_2_id, club_id, entry_2_id):
     with db.transaction():
         entry_id_1_result = db.add_entry_result(
             event_id=event_2_id,
             chip="4455",
             result=result_type.PersonRaceResult(status=ResultStatus.DID_NOT_START),
-            start_time=S3,
+            start=PersonRaceStart(start_time=S3),
         )
         entry_id_2_result = db.add_entry_result(
             event_id=event_2_id,
             chip="2289",
             result=result_type.PersonRaceResult(status=ResultStatus.MISSING_PUNCH),
-            start_time=S2,
+            start=PersonRaceStart(start_time=S2),
         )
 
     with db.transaction():
@@ -1091,7 +981,7 @@ def test_import_entries_already_exist(
         club_name="OL Bundestag",
         gender="F",
         year=1957,
-        chip="9999999",
+        chip="1234567",
     )
 
     with db.transaction():

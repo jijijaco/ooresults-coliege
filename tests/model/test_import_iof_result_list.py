@@ -68,22 +68,31 @@ def class_id(db: SqliteRepo, event_id: int) -> int:
 
 
 @pytest.fixture
-def entry_id(db: SqliteRepo, event_id: int, class_id: int) -> int:
+def competitor_id(db: SqliteRepo) -> int:
+    with db.transaction():
+        return db.add_competitor(
+            first_name="Robert",
+            last_name="Lewandowski",
+            club_id=None,
+            gender="",
+            year=None,
+            chip="9999999",
+        )
+
+
+@pytest.fixture
+def entry_id(db: SqliteRepo, event_id: int, class_id: int, competitor_id: int) -> int:
     with db.transaction():
         return db.add_entry(
             event_id=event_id,
-            competitor_id=None,
-            first_name="Robert",
-            last_name="Lewandowski",
-            gender="",
-            year=None,
+            competitor_id=competitor_id,
             class_id=class_id,
             club_id=None,
             not_competing=False,
             chip="9999999",
             fields={},
-            status=ResultStatus.INACTIVE,
-            start_time=None,
+            result=PersonRaceResult(),
+            start=PersonRaceStart(),
         )
 
 

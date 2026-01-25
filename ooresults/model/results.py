@@ -37,6 +37,7 @@ from ooresults.otypes.event_type import EventType
 from ooresults.otypes.result_type import ResultStatus
 from ooresults.otypes.result_type import SpStatus
 from ooresults.otypes.series_type import Settings
+from ooresults.otypes.start_type import PersonRaceStart
 from ooresults.plugins import iof_result_list
 from ooresults.plugins.iof_result_list import ResultListStatus
 from ooresults.repo.repo import EventNotFoundError
@@ -184,7 +185,7 @@ def store_cardreader_result(
                         id=entry.id,
                         chip=entry.chip,
                         result=result,
-                        start_time=entry.start.start_time,
+                        start=entry.start,
                     )
                     res = {
                         "entryTime": item.entry_time,
@@ -213,7 +214,7 @@ def store_cardreader_result(
                             event_id=event.id,
                             chip=item.control_card,
                             result=result,
-                            start_time=None,
+                            start=PersonRaceStart(),
                         )
                     res = {
                         "entryTime": item.entry_time,

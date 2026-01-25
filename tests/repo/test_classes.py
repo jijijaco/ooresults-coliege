@@ -26,7 +26,8 @@ from ooresults.otypes.class_params import ClassParams
 from ooresults.otypes.class_params import VoidedLeg
 from ooresults.otypes.class_type import ClassInfoType
 from ooresults.otypes.class_type import ClassType
-from ooresults.otypes.result_type import ResultStatus
+from ooresults.otypes.result_type import PersonRaceResult
+from ooresults.otypes.start_type import PersonRaceStart
 from ooresults.repo import repo
 from ooresults.repo.sqlite_repo import SqliteRepo
 
@@ -39,7 +40,7 @@ def db() -> Iterator[SqliteRepo]:
 
 
 @pytest.fixture
-def event_1_id(db):
+def event_1_id(db: SqliteRepo) -> int:
     with db.transaction():
         return db.add_event(
             name="Event 1",
@@ -52,7 +53,7 @@ def event_1_id(db):
 
 
 @pytest.fixture
-def event_2_id(db):
+def event_2_id(db: SqliteRepo) -> int:
     with db.transaction():
         return db.add_event(
             name="Event 2",
@@ -65,7 +66,7 @@ def event_2_id(db):
 
 
 @pytest.fixture
-def course_1_id(db, event_1_id):
+def course_1_id(db: SqliteRepo, event_1_id: int) -> int:
     with db.transaction():
         return db.add_course(
             event_id=event_1_id,
@@ -77,7 +78,7 @@ def course_1_id(db, event_1_id):
 
 
 @pytest.fixture
-def course_2_id(db, event_1_id):
+def course_2_id(db: SqliteRepo, event_1_id: int) -> int:
     with db.transaction():
         return db.add_course(
             event_id=event_1_id,
@@ -89,7 +90,7 @@ def course_2_id(db, event_1_id):
 
 
 @pytest.fixture
-def class_1_id(db, event_1_id):
+def class_1_id(db: SqliteRepo, event_1_id: int) -> int:
     with db.transaction():
         return db.add_class(
             event_id=event_1_id,
@@ -101,7 +102,7 @@ def class_1_id(db, event_1_id):
 
 
 @pytest.fixture
-def class_2_id(db, event_1_id, course_1_id):
+def class_2_id(db: SqliteRepo, event_1_id: int, course_1_id: int) -> int:
     with db.transaction():
         return db.add_class(
             event_id=event_1_id,
@@ -113,7 +114,7 @@ def class_2_id(db, event_1_id, course_1_id):
 
 
 @pytest.fixture
-def class_3_id(db, event_2_id):
+def class_3_id(db: SqliteRepo, event_2_id: int) -> int:
     with db.transaction():
         return db.add_class(
             event_id=event_2_id,
@@ -125,22 +126,33 @@ def class_3_id(db, event_2_id):
 
 
 @pytest.fixture
-def entry_id(db, event_1_id, class_1_id):
+def competitor_id(db: SqliteRepo) -> int:
+    with db.transaction():
+        return db.add_competitor(
+            first_name="A",
+            last_name="B",
+            club_id=None,
+            gender="",
+            year=None,
+            chip="",
+        )
+
+
+@pytest.fixture
+def entry_id(
+    db: SqliteRepo, event_1_id: int, class_1_id: int, competitor_id: int
+) -> int:
     with db.transaction():
         return db.add_entry(
             event_id=event_1_id,
-            competitor_id=None,
-            first_name="A",
-            last_name="B",
-            gender="",
-            year=None,
+            competitor_id=competitor_id,
             class_id=class_1_id,
             club_id=None,
             not_competing=False,
             chip="",
             fields={},
-            status=ResultStatus.INACTIVE,
-            start_time=None,
+            result=PersonRaceResult(),
+            start=PersonRaceStart(),
         )
 
 

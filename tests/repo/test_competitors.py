@@ -25,7 +25,8 @@ import pytest
 from ooresults.otypes.class_params import ClassParams
 from ooresults.otypes.club_type import ClubType
 from ooresults.otypes.competitor_type import CompetitorType
-from ooresults.otypes.result_type import ResultStatus
+from ooresults.otypes.result_type import PersonRaceResult
+from ooresults.otypes.start_type import PersonRaceStart
 from ooresults.repo import repo
 from ooresults.repo.sqlite_repo import SqliteRepo
 
@@ -38,7 +39,7 @@ def db() -> Iterator[SqliteRepo]:
 
 
 @pytest.fixture
-def club_id(db):
+def club_id(db: SqliteRepo) -> int:
     with db.transaction():
         return db.add_club(
             name="OL Bundestag",
@@ -46,7 +47,7 @@ def club_id(db):
 
 
 @pytest.fixture
-def event_id(db):
+def event_id(db: SqliteRepo) -> int:
     with db.transaction():
         return db.add_event(
             name="Event",
@@ -59,7 +60,7 @@ def event_id(db):
 
 
 @pytest.fixture
-def class_id(db, event_id):
+def class_id(db: SqliteRepo, event_id: int) -> int:
     with db.transaction():
         return db.add_class(
             event_id=event_id,
@@ -71,27 +72,23 @@ def class_id(db, event_id):
 
 
 @pytest.fixture
-def entry_id(db, event_id, class_id, competitor_1_id):
+def entry_id(db: SqliteRepo, event_id: int, class_id: int, competitor_1_id: int) -> int:
     with db.transaction():
         return db.add_entry(
             event_id=event_id,
-            competitor_id=None,
-            first_name="Jogi",
-            last_name="Löw",
-            gender="M",
-            year=None,
+            competitor_id=competitor_1_id,
             class_id=class_id,
             club_id=None,
             not_competing=False,
             chip="",
             fields={},
-            status=ResultStatus.INACTIVE,
-            start_time=None,
+            result=PersonRaceResult(),
+            start=PersonRaceStart(),
         )
 
 
 @pytest.fixture
-def competitor_1_id(db, club_id):
+def competitor_1_id(db: SqliteRepo, club_id: int) -> int:
     with db.transaction():
         return db.add_competitor(
             first_name="Jogi",
@@ -104,7 +101,7 @@ def competitor_1_id(db, club_id):
 
 
 @pytest.fixture
-def competitor_2_id(db, club_id):
+def competitor_2_id(db: SqliteRepo, club_id: int) -> int:
     with db.transaction():
         return db.add_competitor(
             first_name="Angela",

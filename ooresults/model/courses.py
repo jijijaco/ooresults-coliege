@@ -167,7 +167,7 @@ def update_course(
                         id=entry.id,
                         chip=entry.chip,
                         result=entry.result,
-                        start_time=entry.start.start_time,
+                        start=entry.start,
                     )
                     break
 

@@ -24,7 +24,8 @@ import pytest
 
 from ooresults.otypes.class_params import ClassParams
 from ooresults.otypes.club_type import ClubType
-from ooresults.otypes.result_type import ResultStatus
+from ooresults.otypes.result_type import PersonRaceResult
+from ooresults.otypes.start_type import PersonRaceStart
 from ooresults.repo import repo
 from ooresults.repo.sqlite_repo import SqliteRepo
 
@@ -37,7 +38,7 @@ def db() -> Iterator[SqliteRepo]:
 
 
 @pytest.fixture
-def club_1_id(db):
+def club_1_id(db: SqliteRepo) -> int:
     with db.transaction():
         return db.add_club(
             name="Club 1",
@@ -45,7 +46,7 @@ def club_1_id(db):
 
 
 @pytest.fixture
-def club_2_id(db):
+def club_2_id(db: SqliteRepo) -> int:
     with db.transaction():
         return db.add_club(
             name="Club 2",
@@ -53,7 +54,7 @@ def club_2_id(db):
 
 
 @pytest.fixture
-def competitor_id(db, club_1_id):
+def competitor_id(db: SqliteRepo, club_1_id: int) -> int:
     with db.transaction():
         return db.add_competitor(
             first_name="A",
@@ -66,7 +67,7 @@ def competitor_id(db, club_1_id):
 
 
 @pytest.fixture
-def event_id(db):
+def event_id(db: SqliteRepo) -> int:
     with db.transaction():
         return db.add_event(
             name="Event",
@@ -79,7 +80,7 @@ def event_id(db):
 
 
 @pytest.fixture
-def class_id(db, event_id):
+def class_id(db: SqliteRepo, event_id: int) -> int:
     with db.transaction():
         return db.add_class(
             event_id=event_id,
@@ -91,22 +92,20 @@ def class_id(db, event_id):
 
 
 @pytest.fixture
-def entry_id(db, event_id, class_id, club_1_id):
+def entry_id(
+    db, event_id: int, class_id: int, club_1_id: int, competitor_id: int
+) -> int:
     with db.transaction():
         return db.add_entry(
             event_id=event_id,
-            competitor_id=None,
-            first_name="A",
-            last_name="B",
-            gender="",
-            year=None,
+            competitor_id=competitor_id,
             class_id=class_id,
             club_id=club_1_id,
             not_competing=False,
             chip="",
             fields={},
-            status=ResultStatus.INACTIVE,
-            start_time=None,
+            result=PersonRaceResult(),
+            start=PersonRaceStart(),
         )
 
 

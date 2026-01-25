@@ -32,6 +32,7 @@ from ooresults.otypes.result_type import PersonRaceResult
 from ooresults.otypes.result_type import ResultStatus
 from ooresults.otypes.result_type import SplitTime
 from ooresults.otypes.result_type import SpStatus
+from ooresults.otypes.start_type import PersonRaceStart
 from ooresults.repo.sqlite_repo import SqliteRepo
 
 
@@ -99,22 +100,33 @@ F1 = datetime.datetime(2015, 1, 1, 12, 39, 7, tzinfo=timezone.utc)
 
 
 @pytest.fixture
-def entry_1(db: SqliteRepo, event_id: int, class_1_id: int) -> EntryType:
+def competitor_id(db: SqliteRepo) -> int:
+    with db.transaction():
+        return db.add_competitor(
+            first_name="Angela",
+            last_name="Merkel",
+            club_id=None,
+            gender="",
+            year=None,
+            chip="",
+        )
+
+
+@pytest.fixture
+def entry_1(
+    db: SqliteRepo, event_id: int, class_1_id: int, competitor_id: int
+) -> EntryType:
     with db.transaction():
         id = db.add_entry(
             event_id=event_id,
-            competitor_id=None,
-            first_name="Claudia",
-            last_name="Merkel",
-            gender="",
-            year=None,
+            competitor_id=competitor_id,
             class_id=class_1_id,
             club_id=None,
             not_competing=False,
             chip="",
             fields={},
-            status=ResultStatus.INACTIVE,
-            start_time=None,
+            result=PersonRaceResult(),
+            start=PersonRaceStart(),
         )
         result = PersonRaceResult(
             punched_start_time=S1,
@@ -139,8 +151,8 @@ def entry_1(db: SqliteRepo, event_id: int, class_1_id: int) -> EntryType:
         db.update_entry_result(
             id=id,
             chip="7411",
-            start_time=None,
             result=result,
+            start=PersonRaceStart(),
         )
         item = db.get_entry(id=id)
         return copy.deepcopy(item)

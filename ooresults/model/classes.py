@@ -129,7 +129,7 @@ def update_class(
                     id=entry.id,
                     chip=entry.chip,
                     result=entry.result,
-                    start_time=entry.start.start_time,
+                    start=entry.start,
                 )
 
     cached_result.clear_cache(event_id=event_id)
