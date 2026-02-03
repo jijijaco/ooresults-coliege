@@ -1031,14 +1031,6 @@ class SqliteRepo(Repo):
         result: result_type.PersonRaceResult,
         start: start_type.PersonRaceStart,
     ) -> int:
-        # check if competitor is already entered for this event
-        entry_ids = self.get_entry_ids_by_competitor(
-            event_id=event_id,
-            competitor_id=competitor_id,
-        )
-        if entry_ids != []:
-            raise ConstraintError("Competitor already registered for this event")
-
         cur = self.db.execute(
             """
             INSERT into entries (

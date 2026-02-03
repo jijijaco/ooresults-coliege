@@ -163,9 +163,11 @@ class StatusDialog:
         )
         return self
 
-    def get_text(self) -> str:
+    def get_text(self) -> list[str]:
         elem = self.page.find_element(By.ID, "statusDialogContent")
-        return elem.find_element(By.XPATH, "p[1]").text
+
+        items = elem.find_elements(By.XPATH, "p")
+        return [p.text for p in items if p.text]
 
     def close(self) -> None:
         elem = self.page.find_element(By.ID, self.modal_dialog_id)

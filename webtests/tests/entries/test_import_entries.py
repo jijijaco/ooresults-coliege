@@ -222,7 +222,11 @@ def test_if_a_competitor_is_contained_several_times_then_only_the_first_entry_is
         with open(path, mode="w") as f:
             f.write(content)
         info_dialog = dialog.import_(path=path, info_dialog=True)
-    assert info_dialog.get_text() == "1 of 2 entries imported."
+    assert info_dialog.get_text() == [
+        "1 of 2 entries imported.",
+        "Warning:",
+        "For the following names with several entries only the first entry was imported:",
+    ]
     info_dialog.close()
 
     # check number of rows

@@ -519,49 +519,6 @@ def test_if_an_entry_is_updated_and_the_result_no_longer_exists_then_an_exceptio
         )
 
 
-def test_if_an_already_registered_competitor_is_added_then_an_exception_is_raised(
-    event_id: int, class_1_id: int
-):
-    model.entries.add_or_update_entry(
-        id=None,
-        event_id=event_id,
-        competitor_id=None,
-        first_name="Angela",
-        last_name="Merkel",
-        gender="F",
-        year=None,
-        class_id=class_1_id,
-        club_id=None,
-        not_competing=False,
-        chip="4748495",
-        fields={},
-        status=ResultStatus.INACTIVE,
-        start_time=None,
-        result_id=None,
-    )
-
-    with pytest.raises(
-        repo.ConstraintError, match="Competitor already registered for this event"
-    ):
-        model.entries.add_or_update_entry(
-            id=None,
-            event_id=event_id,
-            competitor_id=None,
-            first_name="Angela",
-            last_name="Merkel",
-            gender="F",
-            year=None,
-            class_id=class_1_id,
-            club_id=None,
-            not_competing=False,
-            chip="4748495",
-            fields={},
-            status=ResultStatus.INACTIVE,
-            start_time=None,
-            result_id=None,
-        )
-
-
 def test_if_an_entry_is_added_and_the_name_is_changed_to_an_existing_name_then_an_exception_is_raised(
     db: SqliteRepo, event_id: int, competitor_id: int, class_1_id: int
 ):

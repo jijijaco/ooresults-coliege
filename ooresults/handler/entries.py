@@ -111,6 +111,17 @@ def update(event_id: int, view: str = "entries"):
                 ResultStatus.DID_NOT_START: "Did not start",
             }
             view_entries_list = [(f_name[v[0]], v[1]) for v in view_entries_list]
+        elif view == "competitors":
+            view_entries: defaultdict[int, list[EntryType]] = defaultdict(list)
+            for e in entry_list[unassigned_results:]:
+                view_entries[e.competitor_id].append(e)
+            view_entries_list = list(view_entries.items())
+            view_entries_list.sort(key=lambda e: len(e[1]), reverse=True)
+            view_entries_list = [
+                (f"{v[1][0].last_name}, {v[1][0].first_name}", v[1])
+                for v in view_entries_list
+            ]
+
         # add unassigned results
         if unassigned_results > 0:
             unassigned_list = [("Unassigned results", entry_list[:unassigned_results])]
@@ -284,7 +295,7 @@ def post_add():
             if name in data:
                 fields[i] = data[name]
 
-        model.entries.add_or_update_entry(
+        _, nc_changed = model.entries.add_or_update_entry(
             id=int(data.id) if data.id != "" else None,
             event_id=event_id,
             competitor_id=(
@@ -311,7 +322,10 @@ def post_add():
     except KeyError:
         return bottle.HTTPResponse(status=409, body="Entry deleted")
 
-    return update(event_id=event_id, view=data.view)
+    answer = {"table": update(event_id=event_id, view=data.view)}
+    if nc_changed:
+        answer["status"] = render.entries_add_status()
+    return json.dumps(answer)
 
 
 def collect_unassigned_si_results(entries: list[EntryType]) -> dict[int, str]:

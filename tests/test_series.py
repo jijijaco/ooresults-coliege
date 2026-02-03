@@ -313,6 +313,77 @@ def test_best_3_of_1_race(event_1: EventType, class_info_1: ClassInfoType):
     ]
 
 
+def test_if_started_several_times_in_a_class_at_an_event_then_use_best_result(
+    event_1: EventType, class_info_1: ClassInfoType
+):
+    entry_1 = EntryType(
+        id=1,
+        event_id=event_1.id,
+        competitor_id=1,
+        first_name="Angela",
+        last_name="Merkel",
+        class_id=class_info_1.id,
+        class_name=class_info_1.name,
+        result=PersonRaceResult(
+            time=400,
+        ),
+    )
+    entry_2 = EntryType(
+        id=2,
+        event_id=event_1.id,
+        competitor_id=1,
+        first_name="Angela",
+        last_name="Merkel",
+        class_id=class_info_1.id,
+        class_name=class_info_1.name,
+        result=PersonRaceResult(
+            time=600,
+        ),
+    )
+
+    data = build_results.build_total_results(
+        settings=series_type.Settings(
+            nr_of_best_results=3,
+        ),
+        list_of_results=[
+            [
+                (
+                    class_info_1,
+                    [
+                        RankedEntryType(
+                            entry=entry_2,
+                            rank=1,
+                        ),
+                        RankedEntryType(
+                            entry=entry_1,
+                            rank=1,
+                        ),
+                    ],
+                ),
+            ],
+        ],
+    )
+    print(data)
+    assert data == [
+        (
+            class_info_1.name,
+            [
+                PersonSeriesResult(
+                    first_name="Angela",
+                    last_name="Merkel",
+                    year=None,
+                    club_name=None,
+                    races={
+                        0: Points(points=Decimal("100")),
+                    },
+                    total_points=Decimal("100"),
+                    rank=1,
+                ),
+            ],
+        ),
+    ]
+
+
 def test_best_3_of_2_races(
     event_1: EventType,
     event_2: EventType,

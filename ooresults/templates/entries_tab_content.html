@@ -438,11 +438,16 @@
         var xhr = new XMLHttpRequest();
         xhr.onreadystatechange = function() {
             if (this.readyState == 4 && this.status == 200) {
+                const obj = JSON.parse(this.responseText);
                 filter_content = document.getElementById('entr.filter').value;
-                entr_updateTable(this.responseText);
+                entr_updateTable(obj.table);
                 document.getElementById('entr.filter').value = filter_content;
                 if (filter_content != "") {
                     filter_table('entr.table', 'tr', filter_content);
+                }
+                if ("status" in obj) {
+                    document.getElementById('statusDialogContent').innerHTML = obj.status;
+                    document.getElementById('statusDialog').style.display = "block";
                 }
             }
             if (this.readyState == 4 && this.status == 409) {

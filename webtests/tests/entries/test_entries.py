@@ -20,10 +20,10 @@
 import pytest
 from selenium import webdriver
 
-from webtests.controls.alert_window import AlertWindow
 from webtests.pageobjects.classes import ClassPage
 from webtests.pageobjects.competitors import CompetitorPage
 from webtests.pageobjects.entries import EntryPage
+from webtests.pageobjects.entries import StatusDialog
 from webtests.pageobjects.events import EventPage
 from webtests.pageobjects.tabs import Tabs
 
@@ -275,7 +275,7 @@ def test_if_an_entry_is_added_with_all_data_then_an_additional_entry_is_displaye
     ]
 
 
-def test_if_an_already_registered_competitor_is_added_then_an_error_message_is_displayed(
+def test_if_an_already_registered_competitor_is_added_with_not_competing_true_then_an_additional_entry_is_displayed(
     page: webdriver.Remote, entry_page: EntryPage, entry: None
 ):
     dialog = entry_page.actions.add()
@@ -285,11 +285,95 @@ def test_if_an_already_registered_competitor_is_added_then_an_error_message_is_d
         class_name="Bahn A - Frauen",
         not_competing=True,
     )
+    dialog.submit()
+
+    # check number of rows
+    assert entry_page.table.nr_of_rows() == 3
+    assert entry_page.table.nr_of_columns() == 11
+
+    assert entry_page.table.row(i=1) == [
+        "Entries  (2)",
+    ]
+    assert entry_page.table.row(i=2) == [
+        "",
+        "Annalena",
+        "Baerbock",
+        "F",
+        "1980",
+        "7379879",
+        "",
+        "Bahn A - Frauen",
+        "11:00:00",
+        "",
+        "",
+    ]
+    assert entry_page.table.row(i=3) == [
+        "X",
+        "Annalena",
+        "Baerbock",
+        "F",
+        "1980",
+        "7379879",
+        "",
+        "Bahn A - Frauen",
+        "",
+        "",
+        "",
+    ]
+
+
+def test_if_an_already_registered_competitor_is_added_with_not_competing_false_then_not_competing_is_set_to_true(
+    page: webdriver.Remote, entry_page: EntryPage, entry: None
+):
+    dialog = entry_page.actions.add()
+    dialog.enter_values(
+        first_name="Annalena",
+        last_name="Baerbock",
+        class_name="Bahn A - Frauen",
+        not_competing=False,
+    )
     dialog.submit(wait_until_closed=False)
-    alert = AlertWindow(page=page)
-    assert alert.get_text() == "Competitor already registered for this event"
-    alert.accept()
-    dialog.cancel()
+    info_dialog = StatusDialog(page=page).wait()
+    assert info_dialog.get_text() == [
+        "Warning:",
+        'The participant is already registered for this event. Therefore, the competing status has been changed to “not competing".',
+        "However, you can change this at any time.",
+    ]
+    info_dialog.close()
+
+    # check number of rows
+    assert entry_page.table.nr_of_rows() == 3
+    assert entry_page.table.nr_of_columns() == 11
+
+    assert entry_page.table.row(i=1) == [
+        "Entries  (2)",
+    ]
+    assert entry_page.table.row(i=2) == [
+        "",
+        "Annalena",
+        "Baerbock",
+        "F",
+        "1980",
+        "7379879",
+        "",
+        "Bahn A - Frauen",
+        "11:00:00",
+        "",
+        "",
+    ]
+    assert entry_page.table.row(i=3) == [
+        "X",
+        "Annalena",
+        "Baerbock",
+        "F",
+        "1980",
+        "7379879",
+        "",
+        "Bahn A - Frauen",
+        "",
+        "",
+        "",
+    ]
 
 
 @pytest.mark.parametrize("gender", ["", "F", "M"])

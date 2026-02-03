@@ -33,7 +33,6 @@ from ooresults.otypes.result_type import ResultStatus
 from ooresults.otypes.result_type import SplitTime
 from ooresults.otypes.result_type import SpStatus
 from ooresults.otypes.start_type import PersonRaceStart
-from ooresults.repo import repo
 from ooresults.repo.sqlite_repo import SqliteRepo
 
 
@@ -233,7 +232,7 @@ def entry_2(db: SqliteRepo, event_id: int, class_1_id: int) -> EntryType:
 def test_if_competitor_does_not_exist_a_new_competitor_is_added(
     db: SqliteRepo, event_id: int, class_1_id: int, club_id: int
 ):
-    id = model.entries.add_or_update_entry(
+    id, nc_changed = model.entries.add_or_update_entry(
         id=None,
         event_id=event_id,
         competitor_id=None,
@@ -250,6 +249,7 @@ def test_if_competitor_does_not_exist_a_new_competitor_is_added(
         start_time=None,
         result_id=None,
     )
+    assert nc_changed is False
 
     with db.transaction():
         competitors = db.get_competitors()
@@ -309,7 +309,7 @@ def test_add_existing_competitor_but_do_not_update_competitors_chip_and_club_if_
             chip="1234567",
         )
 
-    id = model.entries.add_or_update_entry(
+    id, _ = model.entries.add_or_update_entry(
         id=None,
         event_id=event_id,
         competitor_id=competitor_id,
@@ -383,7 +383,7 @@ def test_add_existing_competitor_and_update_competitors_chip_and_club_if_undefin
             chip="",
         )
 
-    id = model.entries.add_or_update_entry(
+    id, _ = model.entries.add_or_update_entry(
         id=None,
         event_id=event_id,
         competitor_id=competitor_id,
@@ -447,11 +447,10 @@ def test_add_existing_competitor_and_update_competitors_chip_and_club_if_undefin
 def test_add_entry_without_result(
     event_id: int,
     class_1_id: int,
-    course_1_id: int,
     club_id: int,
     competitor_id: int,
 ):
-    id = model.entries.add_or_update_entry(
+    id, nc_changed = model.entries.add_or_update_entry(
         id=None,
         event_id=event_id,
         competitor_id=None,
@@ -468,6 +467,7 @@ def test_add_entry_without_result(
         start_time=None,
         result_id=None,
     )
+    assert nc_changed is False
 
     entries = model.entries.get_entries(event_id=event_id)
     assert entries == [
@@ -558,11 +558,43 @@ def test_if_updating_an_entry_then_the_key_data_of_the_competitor_are_also_updat
     )
 
 
-def test_if_an_already_registered_competitor_is_added_then_an_exception_is_raised(
+@pytest.mark.parametrize(
+    "nc1_input, nc2_input",
+    [
+        (False, False),
+        (False, True),
+        (True, False),
+        (True, True),
+    ],
+)
+def test_if_an_already_registered_competitor_is_added_then_not_competing_is_set_to_true(
+    nc1_input: bool,
+    nc2_input: bool,
     event_id: int,
     class_1_id: int,
+    club_id: int,
+    competitor_id: int,
 ):
-    model.entries.add_or_update_entry(
+    id1, nc_changed = model.entries.add_or_update_entry(
+        id=None,
+        event_id=event_id,
+        competitor_id=None,
+        first_name="Angela",
+        last_name="Merkel",
+        gender="F",
+        year=1957,
+        class_id=class_1_id,
+        club_id=None,
+        not_competing=nc1_input,
+        chip="4748495",
+        fields={},
+        status=ResultStatus.INACTIVE,
+        start_time=None,
+        result_id=None,
+    )
+    assert nc_changed is False
+
+    id2, nc_changed = model.entries.add_or_update_entry(
         id=None,
         event_id=event_id,
         competitor_id=None,
@@ -572,45 +604,76 @@ def test_if_an_already_registered_competitor_is_added_then_an_exception_is_raise
         year=None,
         class_id=class_1_id,
         club_id=None,
-        not_competing=False,
+        not_competing=nc2_input,
         chip="4748495",
         fields={},
         status=ResultStatus.INACTIVE,
         start_time=None,
         result_id=None,
     )
+    assert nc_changed is (not nc2_input)
 
-    with pytest.raises(
-        repo.ConstraintError, match="Competitor already registered for this event"
-    ):
-        model.entries.add_or_update_entry(
-            id=None,
+    entries = model.entries.get_entries(event_id=event_id)
+    assert entries == [
+        EntryType(
+            id=id1,
             event_id=event_id,
-            competitor_id=None,
+            competitor_id=competitor_id,
             first_name="Angela",
             last_name="Merkel",
             gender="F",
-            year=None,
+            year=1957,
             class_id=class_1_id,
-            club_id=None,
-            not_competing=False,
+            class_name="Elite",
+            not_competing=nc1_input,
             chip="4748495",
             fields={},
-            status=ResultStatus.INACTIVE,
-            start_time=None,
-            result_id=None,
-        )
+            result=PersonRaceResult(
+                split_times=[
+                    SplitTime(control_code="101", status=SpStatus.MISSING),
+                    SplitTime(control_code="102", status=SpStatus.MISSING),
+                    SplitTime(control_code="103", status=SpStatus.MISSING),
+                ],
+            ),
+            start=PersonRaceStart(),
+            club_id=club_id,
+            club_name="OL Bundestag",
+        ),
+        EntryType(
+            id=id2,
+            event_id=event_id,
+            competitor_id=competitor_id,
+            first_name="Angela",
+            last_name="Merkel",
+            gender="F",
+            year=1957,
+            class_id=class_1_id,
+            class_name="Elite",
+            not_competing=True,
+            chip="4748495",
+            fields={},
+            result=PersonRaceResult(
+                split_times=[
+                    SplitTime(control_code="101", status=SpStatus.MISSING),
+                    SplitTime(control_code="102", status=SpStatus.MISSING),
+                    SplitTime(control_code="103", status=SpStatus.MISSING),
+                ],
+            ),
+            start=PersonRaceStart(),
+            club_id=club_id,
+            club_name="OL Bundestag",
+        ),
+    ]
 
 
 def test_add_entry_with_result(
     event_id: int,
     class_1_id: int,
-    course_1_id: int,
     club_id: int,
     competitor_id: int,
     entry_2: EntryType,
 ):
-    id = model.entries.add_or_update_entry(
+    id, nc_changed = model.entries.add_or_update_entry(
         id=None,
         event_id=event_id,
         competitor_id=None,
@@ -627,6 +690,7 @@ def test_add_entry_with_result(
         start_time=None,
         result_id=entry_2.id,
     )
+    assert nc_changed is False
 
     entries = model.entries.get_entries(event_id=event_id)
     assert entries == [
@@ -686,12 +750,11 @@ def test_add_entry_with_result(
 def test_update_entry_remove_result_and_store_removed_result_without_edits(
     event_id: int,
     class_1_id: int,
-    course_1_id: int,
     club_id: int,
     competitor_id: int,
     entry_1: EntryType,
 ):
-    id = model.entries.add_or_update_entry(
+    id, _ = model.entries.add_or_update_entry(
         id=entry_1.id,
         event_id=event_id,
         competitor_id=None,
@@ -768,12 +831,11 @@ def test_update_entry_remove_result_and_store_removed_result_without_edits(
 def test_update_entry_remove_result_with_status_disqualified_do_not_change_status(
     event_id: int,
     class_1_id: int,
-    course_1_id: int,
     club_id: int,
     competitor_id: int,
     entry_1: EntryType,
 ):
-    id = model.entries.add_or_update_entry(
+    id, _ = model.entries.add_or_update_entry(
         id=entry_1.id,
         event_id=event_id,
         competitor_id=None,
@@ -851,12 +913,11 @@ def test_update_entry_remove_result_with_status_disqualified_do_not_change_statu
 def test_update_entry_change_status_and_remove_result_stores_changed_status(
     event_id: int,
     class_1_id: int,
-    course_1_id: int,
     club_id: int,
     competitor_id: int,
     entry_1: EntryType,
 ):
-    id = model.entries.add_or_update_entry(
+    id, _ = model.entries.add_or_update_entry(
         id=entry_1.id,
         event_id=event_id,
         competitor_id=None,
@@ -934,13 +995,12 @@ def test_update_entry_change_status_and_remove_result_stores_changed_status(
 def test_update_entry_replace_result_and_store_replaced_result_without_edits(
     event_id: int,
     class_1_id: int,
-    course_1_id: int,
     club_id: int,
     competitor_id: int,
     entry_1: EntryType,
     entry_2: EntryType,
 ):
-    id = model.entries.add_or_update_entry(
+    id, _ = model.entries.add_or_update_entry(
         id=entry_1.id,
         event_id=event_id,
         competitor_id=None,
@@ -1043,11 +1103,10 @@ def test_update_entry_replace_result_and_store_replaced_result_without_edits(
 def test_update_entry_set_status_to_dns(
     event_id: int,
     class_1_id: int,
-    course_1_id: int,
     club_id: int,
     competitor_id: int,
 ):
-    id = model.entries.add_or_update_entry(
+    id, _ = model.entries.add_or_update_entry(
         id=None,
         event_id=event_id,
         competitor_id=None,

@@ -74,12 +74,12 @@ Der ooresults-server wird mit folgendem Befehl gestartet:
 
    python -m ooresults.server
 
-ooresults-server erzeugt ein Unterverzeichnis .ooresults im Heimverzeichnis des Benutzers,
+Der ooresults-server erzeugt ein Unterverzeichnis .ooresults im Heimverzeichnis des Benutzers,
 falls dieses Verzeichnis noch nicht existiert.
 Es enthält eine sqlite Datenbank und Konfigurationsdateien.
    
-Alternativ kann der Reader auch direkt über das im Script-Verzeichnis der Python-Installation
-befindliche ooresults-reader Program gestartet werden.
+Alternativ kann der Server auch direkt über das im Script-Verzeichnis der Python-Installation
+befindliche ooresults-server Program gestartet werden.
 
 Für eine einfache Benutzung kann ein Desktop-Icon mit einer
 Verknüpfung zu diesem Programm angelegt werden.
@@ -87,7 +87,7 @@ Verknüpfung zu diesem Programm angelegt werden.
 .. warning::
 
    Aus Sicherheitsgründen wird empfohlen, das Passwort des Admin Benutzers nach dem ersten Start
-   des ooresults-reader zu ändern, siehe Kapitel :ref:`user_management`.
+   des ooresults-server zu ändern, siehe Kapitel :ref:`user_management`.
 
 Alle Daten werden in der sqlite Datenbank-Datei ooresults.sqlite im Unterverzeichnis .ooresults
 des Heimverzeichnisses des Benutzer gespeichert.

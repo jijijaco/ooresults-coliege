@@ -2,6 +2,15 @@ Changelog
 =========
 
 
+[Unreleased]
+------------
+
+Changed
+^^^^^^^
+
+- From now on, a competitor can be added to an event multiple times.
+
+
 [0.4.6] - 2025-12-19
 --------------------
 

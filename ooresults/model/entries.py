@@ -72,12 +72,13 @@ def add_or_update_entry(
     status: ResultStatus,
     start_time: Optional[datetime.datetime],
     result_id: Optional[int],
-) -> int:
+) -> tuple[int, bool]:
     """Add a new entry to an event or update an existing entry of an event."""
     #
     # result_id == -1: remove result from entry (store as pseudy result)
     #
 
+    nc_changed = False
     with model.db.transaction(mode=TransactionMode.IMMEDIATE):
         try:
             if id is None:
@@ -121,12 +122,17 @@ def add_or_update_entry(
                     chip=competitor.chip,
                 )
 
+                entry_ids = model.db.get_entry_ids_by_competitor(
+                    event_id=event_id,
+                    competitor_id=competitor_id,
+                )
+                nc_changed = entry_ids != [] and not not_competing
                 id = model.db.add_entry(
                     event_id=event_id,
                     competitor_id=competitor_id,
                     class_id=class_id,
                     club_id=club_id,
-                    not_competing=not_competing,
+                    not_competing=not_competing or entry_ids != [],
                     chip=chip,
                     fields=fields,
                     result=PersonRaceResult(status=status),
@@ -259,7 +265,7 @@ def add_or_update_entry(
             raise
 
     cached_result.clear_cache(event_id=event_id, entry_id=id)
-    return id
+    return id, nc_changed
 
 
 @enum.unique

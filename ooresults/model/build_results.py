@@ -173,7 +173,10 @@ def build_total_results(
                         )
 
                     p = Decimal(settings.maximum_points * points).quantize(q)
-                    r[class_.name][person_name].races[i] = Points(points=p)
+                    # Only use one (the best) result of a person if he/she
+                    # has started several times in a class at an event.
+                    if i not in r[class_.name][person_name].races:
+                        r[class_.name][person_name].races[i] = Points(points=p)
 
     # add organizer bonus
     for i, entries in enumerate(organizers):

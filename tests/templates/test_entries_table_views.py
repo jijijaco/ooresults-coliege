@@ -88,7 +88,7 @@ def test_entry_list_with_view_is_entries(event: EventType, entry_full: EntryType
     assert html.find(".//td[@id='entr.event_date']").text == "2023-12-29"
 
     view = html.findall(".//select[@id='entr.view']/option")
-    assert len(view) == 4
+    assert len(view) == 5
     assert view[0].attrib == {"value": "entries", "selected": "selected"}
     assert view[0].text == "Entries"
     assert view[1].attrib == {"value": "classes"}
@@ -97,6 +97,8 @@ def test_entry_list_with_view_is_entries(event: EventType, entry_full: EntryType
     assert view[2].text == "Clubs"
     assert view[3].attrib == {"value": "states"}
     assert view[3].text == "States"
+    assert view[4].attrib == {"value": "competitors"}
+    assert view[4].text == "Competitors"
 
     # headers
     headers = html.findall(f".//table[@id='{TABLE_ID}']/thead/tr/th")
@@ -157,7 +159,7 @@ def test_entry_list_with_view_is_classes(event: EventType, entry_full: EntryType
     assert html.find(".//td[@id='entr.event_date']").text == "2023-12-29"
 
     view = html.findall(".//select[@id='entr.view']/option")
-    assert len(view) == 4
+    assert len(view) == 5
     assert view[0].attrib == {"value": "entries"}
     assert view[0].text == "Entries"
     assert view[1].attrib == {"value": "classes", "selected": "selected"}
@@ -166,6 +168,8 @@ def test_entry_list_with_view_is_classes(event: EventType, entry_full: EntryType
     assert view[2].text == "Clubs"
     assert view[3].attrib == {"value": "states"}
     assert view[3].text == "States"
+    assert view[4].attrib == {"value": "competitors"}
+    assert view[4].text == "Competitors"
 
     # headers
     headers = html.findall(f".//table[@id='{TABLE_ID}']/thead/tr/th")
@@ -224,7 +228,7 @@ def test_entry_list_with_view_is_clubs(event: EventType, entry_full: EntryType):
     assert html.find(".//td[@id='entr.event_date']").text == "2023-12-29"
 
     view = html.findall(".//select[@id='entr.view']/option")
-    assert len(view) == 4
+    assert len(view) == 5
     assert view[0].attrib == {"value": "entries"}
     assert view[0].text == "Entries"
     assert view[1].attrib == {"value": "classes"}
@@ -233,6 +237,8 @@ def test_entry_list_with_view_is_clubs(event: EventType, entry_full: EntryType):
     assert view[2].text == "Clubs"
     assert view[3].attrib == {"value": "states"}
     assert view[3].text == "States"
+    assert view[4].attrib == {"value": "competitors"}
+    assert view[4].text == "Competitors"
 
     # headers
     headers = html.findall(f".//table[@id='{TABLE_ID}']/thead/tr/th")
@@ -291,7 +297,7 @@ def test_entry_list_with_view_is_states(event: EventType, entry_full: EntryType)
     assert html.find(".//td[@id='entr.event_date']").text == "2023-12-29"
 
     view = html.findall(".//select[@id='entr.view']/option")
-    assert len(view) == 4
+    assert len(view) == 5
     assert view[0].attrib == {"value": "entries"}
     assert view[0].text == "Entries"
     assert view[1].attrib == {"value": "classes"}
@@ -300,6 +306,8 @@ def test_entry_list_with_view_is_states(event: EventType, entry_full: EntryType)
     assert view[2].text == "Clubs"
     assert view[3].attrib == {"value": "states", "selected": "selected"}
     assert view[3].text == "States"
+    assert view[4].attrib == {"value": "competitors"}
+    assert view[4].text == "Competitors"
 
     # headers
     headers = html.findall(f".//table[@id='{TABLE_ID}']/thead/tr/th")
@@ -326,6 +334,79 @@ def test_entry_list_with_view_is_states(event: EventType, entry_full: EntryType)
     # row 1
     assert [th.text for th in rows[0].findall(".//th")] == [
         "Unassigned results\xa0\xa0(1)",
+    ]
+
+    # row 2
+    assert rows[1].attrib["data-id"] == "789"
+    assert rows[1].attrib["data-assigned"] == "true"
+    assert [td.text for td in rows[1].findall(".//td")] == [
+        "X",
+        "Angela",
+        "Merkel",
+        "F",
+        "1957",
+        "87121314",
+        "OL Bundestag",
+        "Elite Women",
+        "200",
+        None,
+        "12:38:59",
+        "6:57",
+        "Finished",
+    ]
+
+
+def test_entry_list_with_view_is_competitors(event: EventType, entry_full: EntryType):
+    event.fields = ["Start number", "Region"]
+    html = etree.HTML(
+        render.entries_table(
+            event=event,
+            view="competitors",
+            view_entries_list=[("Merkel, Angela", [entry_full])],
+        )
+    )
+
+    assert html.find(".//td[@id='entr.event_name']").text == "Test-Lauf 1"
+    assert html.find(".//td[@id='entr.event_date']").text == "2023-12-29"
+
+    view = html.findall(".//select[@id='entr.view']/option")
+    assert len(view) == 5
+    assert view[0].attrib == {"value": "entries"}
+    assert view[0].text == "Entries"
+    assert view[1].attrib == {"value": "classes"}
+    assert view[1].text == "Classes"
+    assert view[2].attrib == {"value": "clubs"}
+    assert view[2].text == "Clubs"
+    assert view[3].attrib == {"value": "states"}
+    assert view[3].text == "States"
+    assert view[4].attrib == {"value": "competitors", "selected": "selected"}
+    assert view[4].text == "Competitors"
+
+    # headers
+    headers = html.findall(f".//table[@id='{TABLE_ID}']/thead/tr/th")
+    assert [h.text for h in headers] == [
+        "\xa0\xa0NC\xa0\xa0",
+        "First name",
+        "Last name",
+        "Gender",
+        "Year",
+        "Chip",
+        "Club",
+        "Class",
+        "Start number",
+        "Region",
+        "Start",
+        "Time",
+        "Status",
+    ]
+
+    # rows
+    rows = html.findall(f".//table[@id='{TABLE_ID}']/tbody/tr")
+    assert len(rows) == 2
+
+    # row 1
+    assert [th.text for th in rows[0].findall(".//th")] == [
+        "Merkel, Angela\xa0\xa0(1)",
     ]
 
     # row 2

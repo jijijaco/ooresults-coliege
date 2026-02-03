@@ -171,8 +171,8 @@ Mit "Import ..." können die Daten eines Wettkampfes in folgenden Formaten impor
 
 .. warning::
 
-   In ooresults kann ein Teilnehmer nur einmal für einen Wettkampf eingetragen werden.
-   Enthalten die zu importierenden Daten mehrere Einträge mit gleichem Vor- und Zunamen, können die Daten nicht importiert werden.
+   Enthalten die zu importierenden Daten mehrere Einträge mit gleichem Vor- und Zunamen, wird nur der erste Eintrag importiert,
+   und es erfolgt eine Meldung, dass nicht alle Daten importiert wurden.
 
 
 Export ...
