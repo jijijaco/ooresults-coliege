@@ -19,7 +19,6 @@
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 
 
 class TextControl:
@@ -38,8 +37,7 @@ class TextControl:
 
     def set_text(self, text: str) -> None:
         if self.is_enabled():
-            self.elem.send_keys(Keys.CONTROL + "a")
-            self.elem.send_keys(Keys.DELETE)
+            self.elem.clear()
             self.elem.send_keys(text)
         else:
             raise RuntimeError("Text control is disabled")
