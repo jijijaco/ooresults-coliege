@@ -49,6 +49,7 @@ def add_event(
     streaming_address: Optional[str] = None,
     streaming_key: Optional[str] = None,
     streaming_enabled: Optional[bool] = None,
+    light: bool = False,
 ) -> None:
     with model.db.transaction(mode=TransactionMode.IMMEDIATE):
         id = model.db.add_event(
@@ -61,6 +62,7 @@ def add_event(
             streaming_address=streaming_address,
             streaming_key=streaming_key,
             streaming_enabled=streaming_enabled,
+            light=light,
         )
     future = asyncio.run_coroutine_threadsafe(
         coro=model.results.websocket_server.update_event(
@@ -75,6 +77,7 @@ def add_event(
                 streaming_address=streaming_address,
                 streaming_key=streaming_key,
                 streaming_enabled=streaming_enabled,
+                light=light,
             )
         ),
         loop=model.results.websocket_server.loop,
@@ -93,6 +96,7 @@ def update_event(
     streaming_address: Optional[str] = None,
     streaming_key: Optional[str] = None,
     streaming_enabled: Optional[bool] = None,
+    light: bool = False,
 ) -> None:
     with model.db.transaction(mode=TransactionMode.IMMEDIATE):
         model.db.update_event(
@@ -106,6 +110,7 @@ def update_event(
             streaming_address=streaming_address,
             streaming_key=streaming_key,
             streaming_enabled=streaming_enabled,
+            light=light,
         )
 
     future = asyncio.run_coroutine_threadsafe(
@@ -121,6 +126,7 @@ def update_event(
                 streaming_address=streaming_address,
                 streaming_key=streaming_key,
                 streaming_enabled=streaming_enabled,
+                light=light,
             )
         ),
         loop=model.results.websocket_server.loop,

@@ -337,3 +337,45 @@ def test_delete_event_with_unknown_id_do_not_change_anything(db, event_1_id):
             fields=[],
         ),
     ]
+
+
+def test_add_event_with_light_true(db):
+    with db.transaction():
+        event_id = db.add_event(
+            name="LightEvent",
+            date=D_2021_03_02,
+            key=None,
+            publish=False,
+            series=None,
+            fields=[],
+            light=True,
+        )
+    with db.transaction():
+        c = db.get_event(id=event_id)
+    assert c == EventType(
+        id=event_id,
+        name="LightEvent",
+        date=D_2021_03_02,
+        key=None,
+        publish=False,
+        series=None,
+        fields=[],
+        light=True,
+    )
+
+
+def test_update_event_light_flag(db, event_1_id):
+    with db.transaction():
+        db.update_event(
+            id=event_1_id,
+            name="XX",
+            date=D_2021_03_02,
+            key="4711",
+            publish=False,
+            series="Run 1",
+            fields=[],
+            light=True,
+        )
+    with db.transaction():
+        c = db.get_event(id=event_1_id)
+    assert c.light is True

@@ -53,7 +53,7 @@ def event(event_page: EventPage, delete_events: None) -> None:
     dialog.submit()
     # check number of rows
     assert event_page.table.nr_of_rows() == 2
-    assert event_page.table.nr_of_columns() == 7
+    assert event_page.table.nr_of_columns() == 8
 
 
 def test_if_event_page_is_displayed_then_all_actions_are_displayed(
@@ -90,12 +90,13 @@ def test_if_a_row_is_selected_then_all_actions_are_enabled(
 def test_if_event_page_is_selected_then_the_table_header_is_displayed(
     event_page: EventPage,
 ):
-    assert event_page.table.nr_of_columns() == 7
+    assert event_page.table.nr_of_columns() == 8
     assert event_page.table.headers() == [
         "Name",
         "Date",
         "Key",
         "Publish",
+        "Light",
         "Streaming",
         "Series",
         "Fields",
@@ -132,7 +133,7 @@ def test_if_an_event_is_added_with_required_data_then_an_additional_event_is_dis
 
     # check number of rows
     assert event_page.table.nr_of_rows() == 2
-    assert event_page.table.nr_of_columns() == 7
+    assert event_page.table.nr_of_columns() == 8
 
     assert event_page.table.row(i=1) == [
         "Events  (1)",
@@ -140,6 +141,7 @@ def test_if_an_event_is_added_with_required_data_then_an_additional_event_is_dis
     assert event_page.table.row(i=2) == [
         "Test-Lauf heute",
         "2023-12-28",
+        "",
         "",
         "",
         "",
@@ -167,7 +169,7 @@ def test_if_adding_an_event_is_cancelled_then_no_additional_event_is_displayed(
 
     # check number of rows
     assert event_page.table.nr_of_rows() == 0
-    assert event_page.table.nr_of_columns() == 7
+    assert event_page.table.nr_of_columns() == 8
 
 
 def test_if_an_event_is_added_with_all_data_then_an_additional_event_is_displayed(
@@ -200,7 +202,7 @@ def test_if_an_event_is_added_with_all_data_then_an_additional_event_is_displaye
 
     # check number of rows
     assert event_page.table.nr_of_rows() == 2
-    assert event_page.table.nr_of_columns() == 7
+    assert event_page.table.nr_of_columns() == 8
 
     assert event_page.table.row(i=1) == [
         "Events  (1)",
@@ -210,6 +212,7 @@ def test_if_an_event_is_added_with_all_data_then_an_additional_event_is_displaye
         "2023-12-28",
         "***",
         "yes",
+        "",
         "enabled",
         "Serie",
         "a, b",
@@ -271,6 +274,7 @@ def test_if_a_new_event_is_added_then_the_selected_event_is_not_changed(
         "2023-12-28",
         "***",
         "yes",
+        "",
         "enabled",
         "Serie",
         "a, b",
@@ -309,7 +313,7 @@ def test_if_an_event_is_edited_then_the_changed_data_are_displayed(
 
     # check number of rows
     assert event_page.table.nr_of_rows() == 2
-    assert event_page.table.nr_of_columns() == 7
+    assert event_page.table.nr_of_columns() == 8
 
     assert event_page.table.row(i=1) == [
         "Events  (1)",
@@ -318,6 +322,7 @@ def test_if_an_event_is_edited_then_the_changed_data_are_displayed(
         "Test-Lauf morgen",
         "2023-12-29",
         "***",
+        "",
         "",
         "",
         "Serie 2",
@@ -355,7 +360,7 @@ def test_if_a_row_is_double_clicked_the_edit_dialog_is_opened(
 
     # check number of rows
     assert event_page.table.nr_of_rows() == 2
-    assert event_page.table.nr_of_columns() == 7
+    assert event_page.table.nr_of_columns() == 8
 
     assert event_page.table.row(i=1) == [
         "Events  (1)",
@@ -364,6 +369,7 @@ def test_if_a_row_is_double_clicked_the_edit_dialog_is_opened(
         "Test-Lauf morgen",
         "2023-12-29",
         "***",
+        "",
         "",
         "",
         "Serie 2",
@@ -399,7 +405,7 @@ def test_if_an_event_is_deleted_then_the_event_is_no_longer_displayed(
 
     # check number of rows
     assert event_page.table.nr_of_rows() == 2
-    assert event_page.table.nr_of_columns() == 7
+    assert event_page.table.nr_of_columns() == 8
 
     assert event_page.table.row(i=1) == [
         "Events  (1)",
@@ -408,6 +414,7 @@ def test_if_an_event_is_deleted_then_the_event_is_no_longer_displayed(
         "Test-Lauf morgen",
         "2023-12-29",
         "***",
+        "",
         "",
         "",
         "Serie 2",
@@ -466,6 +473,7 @@ def test_if_deleting_an_event_is_cancelled_then_the_event_is_displayed_further(
         "2023-12-28",
         "***",
         "yes",
+        "",
         "enabled",
         "Serie",
         "a, b",
@@ -505,7 +513,7 @@ def test_if_several_events_are_added_then_the_added_events_are_displayed(
 
     # check number of rows
     assert event_page.table.nr_of_rows() == 4
-    assert event_page.table.nr_of_columns() == 7
+    assert event_page.table.nr_of_columns() == 8
 
     assert event_page.table.row(i=1) == [
         "Events  (3)",
@@ -513,6 +521,7 @@ def test_if_several_events_are_added_then_the_added_events_are_displayed(
     assert event_page.table.row(i=2) == [
         "Test-Lauf 1",
         "2023-12-29",
+        "",
         "",
         "",
         "",
@@ -524,6 +533,7 @@ def test_if_several_events_are_added_then_the_added_events_are_displayed(
         "2023-12-29",
         "***",
         "",
+        "",
         "enabled",
         "Serie",
         "e, f",
@@ -533,6 +543,7 @@ def test_if_several_events_are_added_then_the_added_events_are_displayed(
         "2023-12-28",
         "***",
         "yes",
+        "",
         "enabled",
         "Serie",
         "a, b",
@@ -572,7 +583,7 @@ def test_events_are_displayed_ordered_by_date_descending(
 
     # check number of rows
     assert event_page.table.nr_of_rows() == 4
-    assert event_page.table.nr_of_columns() == 7
+    assert event_page.table.nr_of_columns() == 8
 
     assert event_page.table.row(i=1) == [
         "Events  (3)",
@@ -581,6 +592,7 @@ def test_events_are_displayed_ordered_by_date_descending(
         "Test-Lauf 2",
         "2023-12-29",
         "***",
+        "",
         "",
         "enabled",
         "Serie",
@@ -591,6 +603,7 @@ def test_events_are_displayed_ordered_by_date_descending(
         "2023-12-28",
         "***",
         "yes",
+        "",
         "enabled",
         "Serie",
         "a, b",
@@ -598,6 +611,7 @@ def test_events_are_displayed_ordered_by_date_descending(
     assert event_page.table.row(i=4) == [
         "Test-Lauf 1",
         "2023-12-27",
+        "",
         "",
         "",
         "",
@@ -639,14 +653,14 @@ def test_if_filter_is_set_then_only_matching_rows_are_displayed(
 
     # check number of rows
     assert event_page.table.nr_of_rows() == 4
-    assert event_page.table.nr_of_columns() == 7
+    assert event_page.table.nr_of_columns() == 8
 
     try:
         event_page.filter().set_text("heute")
 
         # check number of rows
         assert event_page.table.nr_of_rows() == 2
-        assert event_page.table.nr_of_columns() == 7
+        assert event_page.table.nr_of_columns() == 8
 
         assert event_page.table.row(i=1) == [
             "Events  (3)",
@@ -656,6 +670,7 @@ def test_if_filter_is_set_then_only_matching_rows_are_displayed(
             "2023-12-28",
             "***",
             "yes",
+            "",
             "enabled",
             "Serie",
             "a, b",
@@ -685,7 +700,7 @@ def test_if_an_event_is_added_by_another_user_then_it_is_displayed_after_reload(
 
     # check number of rows
     assert event_page.table.nr_of_rows() == 2
-    assert event_page.table.nr_of_columns() == 7
+    assert event_page.table.nr_of_columns() == 8
 
     assert event_page.table.row(i=1) == [
         "Events  (1)",
@@ -695,6 +710,7 @@ def test_if_an_event_is_added_by_another_user_then_it_is_displayed_after_reload(
         "2023-12-28",
         "***",
         "yes",
+        "",
         "enabled",
         "Serie",
         "a, b",
@@ -704,7 +720,7 @@ def test_if_an_event_is_added_by_another_user_then_it_is_displayed_after_reload(
 
     # check number of rows
     assert event_page.table.nr_of_rows() == 3
-    assert event_page.table.nr_of_columns() == 7
+    assert event_page.table.nr_of_columns() == 8
 
     assert event_page.table.row(i=1) == [
         "Events  (2)",
@@ -717,12 +733,14 @@ def test_if_an_event_is_added_by_another_user_then_it_is_displayed_after_reload(
         "",
         "",
         "",
+        "",
     ]
     assert event_page.table.row(i=3) == [
         "Test-Lauf heute",
         "2023-12-28",
         "***",
         "yes",
+        "",
         "enabled",
         "Serie",
         "a, b",

@@ -17,21 +17,30 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-import dataclasses
-import datetime
-from typing import Optional
+import logging
+import sqlite3
 
 
-@dataclasses.dataclass
-class EventType:
-    id: int
-    name: str
-    date: datetime.date
-    key: Optional[str]
-    publish: bool
-    series: Optional[str]
-    fields: list[str]
-    streaming_address: Optional[str] = None
-    streaming_key: Optional[str] = None
-    streaming_enabled: Optional[bool] = None
-    light: bool = False
+VERSION = 16
+
+
+def update(db: sqlite3.Connection) -> None:
+    # add light column to events table
+
+    c = db.cursor()
+    try:
+        c.execute("BEGIN EXCLUSIVE TRANSACTION")
+
+        c.execute("ALTER TABLE events ADD COLUMN light INTEGER DEFAULT 0")
+
+        # version
+        sql = "UPDATE version SET value=?"
+        c.execute(sql, [VERSION])
+        db.commit()
+
+    except:
+        logging.exception(f"Error during DB update to version {VERSION}")
+        db.rollback()
+        raise
+    finally:
+        c.close()

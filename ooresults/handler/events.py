@@ -60,6 +60,7 @@ def post_add():
             streaming_enabled = (
                 "streaming_enabled" in data and data.streaming_enabled == "true"
             )
+        light = "light" in data and data.light == "true"
 
         if data.id == "":
             model.events.add_event(
@@ -72,6 +73,7 @@ def post_add():
                 streaming_address=data.streaming_address,
                 streaming_key=data.streaming_key,
                 streaming_enabled=streaming_enabled,
+                light=light,
             )
         else:
             model.events.update_event(
@@ -85,6 +87,7 @@ def post_add():
                 streaming_address=data.streaming_address,
                 streaming_key=data.streaming_key,
                 streaming_enabled=streaming_enabled,
+                light=light,
             )
     except KeyError:
         return bottle.HTTPResponse(status=409, body="Event deleted")

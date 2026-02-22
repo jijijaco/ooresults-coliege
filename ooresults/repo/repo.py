@@ -290,6 +290,7 @@ class Repo:
         streaming_address: Optional[str] = None,
         streaming_key: Optional[str] = None,
         streaming_enabled: Optional[bool] = None,
+        light: bool = False,
     ) -> int:
         raise NotImplementedError
 
@@ -305,6 +306,7 @@ class Repo:
         streaming_address: Optional[str] = None,
         streaming_key: Optional[str] = None,
         streaming_enabled: Optional[bool] = None,
+        light: bool = False,
     ) -> None:
         raise NotImplementedError
 

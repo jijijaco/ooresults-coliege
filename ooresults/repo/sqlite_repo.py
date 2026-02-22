@@ -104,7 +104,8 @@ class SqliteRepo(Repo):
                             fields BLOB NOT NULL,
                             streaming_address TEXT,
                             streaming_key TEXT,
-                            streaming_enabled BOOL
+                            streaming_enabled BOOL,
+                            light INTEGER DEFAULT 0
                         )""",
                     )
                     cur.execute(
@@ -1352,7 +1353,8 @@ class SqliteRepo(Repo):
                 fields,
                 streaming_address,
                 streaming_key,
-                streaming_enabled
+                streaming_enabled,
+                light
             FROM events
             ORDER BY events.name ASC""",
         )
@@ -1374,6 +1376,7 @@ class SqliteRepo(Repo):
                     streaming_address=e["streaming_address"],
                     streaming_key=e["streaming_key"],
                     streaming_enabled=streaming_enabled,
+                    light=bool(e["light"]),
                 )
             )
         return events
@@ -1391,7 +1394,8 @@ class SqliteRepo(Repo):
                 fields,
                 streaming_address,
                 streaming_key,
-                streaming_enabled
+                streaming_enabled,
+                light
             FROM events WHERE id=?""",
             (id,),
         )
@@ -1412,6 +1416,7 @@ class SqliteRepo(Repo):
                 streaming_address=e["streaming_address"],
                 streaming_key=e["streaming_key"],
                 streaming_enabled=streaming_enabled,
+                light=bool(e["light"]),
             )
         else:
             raise EventNotFoundError
@@ -1427,6 +1432,7 @@ class SqliteRepo(Repo):
         streaming_address: Optional[str] = None,
         streaming_key: Optional[str] = None,
         streaming_enabled: Optional[bool] = None,
+        light: bool = False,
     ) -> int:
         try:
             cur = self.db.execute(
@@ -1440,9 +1446,10 @@ class SqliteRepo(Repo):
                     fields,
                     streaming_address,
                     streaming_key,
-                    streaming_enabled
+                    streaming_enabled,
+                    light
                 )
-                VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     name,
                     date.isoformat(),
@@ -1453,6 +1460,7 @@ class SqliteRepo(Repo):
                     streaming_address,
                     streaming_key,
                     streaming_enabled,
+                    light,
                 ),
             )
             return cur.lastrowid
@@ -1472,6 +1480,7 @@ class SqliteRepo(Repo):
         streaming_address: Optional[str] = None,
         streaming_key: Optional[str] = None,
         streaming_enabled: Optional[bool] = None,
+        light: bool = False,
     ) -> None:
         try:
             cur = self.db.execute(
@@ -1485,7 +1494,8 @@ class SqliteRepo(Repo):
                     fields=?,
                     streaming_address=?,
                     streaming_key=?,
-                    streaming_enabled=?
+                    streaming_enabled=?,
+                    light=?
                 WHERE id=?""",
                 (
                     name,
@@ -1497,6 +1507,7 @@ class SqliteRepo(Repo):
                     streaming_address,
                     streaming_key,
                     streaming_enabled,
+                    light,
                     id,
                 ),
             )
