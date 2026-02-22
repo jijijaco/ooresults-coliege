@@ -185,11 +185,13 @@ def main() -> Optional[int]:
     logging.info("WebSocketServer started")
 
     bottle.install(my_plugin)
+    print("Listening on https://0.0.0.0:8080/")
     bottle.run(
         server="cheroot",
         host="0.0.0.0",
         port=8080,
         debug=True,
+        quiet=True,
         certfile=config.ssl_cert,
         keyfile=config.ssl_key,
     )
