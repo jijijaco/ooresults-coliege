@@ -114,108 +114,14 @@ def store_cardreader_result(
         else:
             raise EventNotFoundError(f'Event for key "{event_key}" not found')
 
-        if item.entry_type == "cardRead":
-            result = item.result
+if event.light:
+            if item.entry_type == "cardRead":
+                result = item.result
+                entries = model.db.get_entries(event_id=event.id)
+                entries_with_chip = [e for e in entries if e.chip == item.control_card]
 
-            entries = model.db.get_entries(event_id=event.id)
-            entries_control_card = [e for e in entries if e.chip == item.control_card]
-            assigned_entries = [
-                e for e in entries_control_card if e.class_name is not None
-            ]
-            unassigned_entries = [
-                e for e in entries_control_card if e.class_name is None
-            ]
-
-            for entry in assigned_entries:
-                r = entry.result
-                if r is not None and r.same_si_punches(other=result):
-                    # result exists and is assigned to a competitor => nothing to do
-                    res = {
-                        "entryTime": item.entry_time,
-                        "eventId": event.id,
-                        "controlCard": entry.chip,
-                        "firstName": entry.first_name,
-                        "lastName": entry.last_name,
-                        "club": entry.club_name,
-                        "class": entry.class_name,
-                        "status": r.status,
-                        "time": r.extensions.get("running_time", r.time),
-                        "error": None,
-                        "missingControls": missing_controls(result=r),
-                    }
-                    break
-            else:
-                # check if result is already read out
-                unassigned_entry = None
-                for entry in unassigned_entries:
-                    if entry.result.same_si_punches(other=result):
-                        unassigned_entry = entry
-                        break
-
-                # result can be assigned to an entry if
-                #   (1) there is exactly one entry without result
-                #   (2) there is no unassigned entry or one unassigned entry with same result
-                if (
-                    len(assigned_entries) == 1
-                    and not assigned_entries[0].result.has_punches()
-                    and (
-                        len(unassigned_entries) == 0
-                        or len(unassigned_entries) == 1
-                        and unassigned_entries[0].result.same_si_punches(other=result)
-                    )
-                ):
-                    entry = assigned_entries[0]
-                    try:
-                        class_ = model.db.get_class(id=entry.class_id)
-                        course_id = class_.course_id
-                        class_params = class_.params
-                        controls = model.db.get_course(id=course_id).controls
-                    except KeyError:
-                        class_params = ClassParams()
-                        controls = []
-
-                    result.compute_result(
-                        controls=controls,
-                        class_params=class_params,
-                        start_time=entry.start.start_time,
-                        year=int(entry.year) if entry.year is not None else None,
-                        gender=entry.gender,
-                    )
-                    model.db.update_entry_result(
-                        id=entry.id,
-                        chip=entry.chip,
-                        result=result,
-                        start=entry.start,
-                    )
-                    res = {
-                        "entryTime": item.entry_time,
-                        "eventId": event.id,
-                        "controlCard": entry.chip,
-                        "firstName": entry.first_name,
-                        "lastName": entry.last_name,
-                        "club": entry.club_name,
-                        "class": entry.class_name,
-                        "status": result.status,
-                        "time": result.extensions.get("running_time", result.time),
-                        "error": None,
-                        "missingControls": missing_controls(result=result),
-                    }
-                    cached_result.clear_cache(event_id=event.id, entry_id=entry.id)
-
-                    # if there is an unassigned entry with the same result, delete it
-                    if unassigned_entries == [unassigned_entry]:
-                        model.db.delete_entry(id=unassigned_entry.id)
-
-                else:
-                    # create a new unassigned entry
-                    result.compute_result(controls=[], class_params=ClassParams())
-                    if unassigned_entry is None:
-                        model.db.add_entry_result(
-                            event_id=event.id,
-                            chip=item.control_card,
-                            result=result,
-                            start=PersonRaceStart(),
-                        )
+                # Step A — second-reading check
+                if entries_with_chip:
                     res = {
                         "entryTime": item.entry_time,
                         "eventId": event.id,
@@ -226,18 +132,239 @@ def store_cardreader_result(
                         "class": None,
                         "status": result.status,
                         "time": None,
+                        "light_status": "second_reading",
                     }
-                    if len(assigned_entries) == 0:
-                        res["error"] = "Control card unknown"
-                    elif len(assigned_entries) >= 2:
-                        res["error"] = "There are several entries for this card"
-                    else:
-                        res["error"] = "There are other results for this card"
+                else:
+                    # Step B — competitor lookup by chip
+                    competitor = model.db.get_competitor_by_chip(chip=item.control_card)
 
-        elif item.entry_type == "cardInserted":
-            res = {"eventId": event.id, "controlCard": item.control_card}
+                    if competitor is None:
+                        # Step E — unassigned (unknown chip)
+                        result.compute_result(controls=[], class_params=ClassParams())
+                        model.db.add_entry_result(
+                            event_id=event.id,
+                            chip=item.control_card,
+                            result=result,
+                            start=PersonRaceStart(),
+                        )
+                        res = {
+                            "entryTime": item.entry_time,
+                            "eventId": event.id,
+                            "controlCard": item.control_card,
+                            "firstName": None,
+                            "lastName": None,
+                            "club": None,
+                            "class": None,
+                            "status": result.status,
+                            "time": None,
+                            "error": "Control card unknown",
+                            "light_status": "unassigned",
+                        }
+                    else:
+                        # Step C — course match: try every class with a course
+                        classes = model.db.get_classes(event_id=event.id)
+                        matching = []
+                        for class_ in classes:
+                            if class_.course_id is None:
+                                continue
+                            try:
+                                controls = model.db.get_course(id=class_.course_id).controls
+                            except KeyError:
+                                continue
+                            r = copy.deepcopy(result)
+                            r.compute_result(
+                                controls=controls,
+                                class_params=class_.params,
+                                start_time=None,
+                                year=int(competitor.year) if competitor.year else None,
+                                gender=competitor.gender,
+                            )
+                            if r.status == ResultStatus.OK:
+                                matching.append((class_, r))
+
+                        if len(matching) == 1:
+                            # Step D — auto-register
+                            class_, matched_result = matching[0]
+                            entry_id = model.db.add_entry(
+                                event_id=event.id,
+                                competitor_id=competitor.id,
+                                class_id=class_.id,
+                                club_id=competitor.club_id,
+                                not_competing=False,
+                                chip=item.control_card,
+                                fields={},
+                                result=matched_result,
+                                start=PersonRaceStart(),
+                            )
+                            entry = model.db.get_entry(id=entry_id)
+                            cached_result.clear_cache(event_id=event.id, entry_id=entry_id)
+                            res = {
+                                "entryTime": item.entry_time,
+                                "eventId": event.id,
+                                "controlCard": entry.chip,
+                                "firstName": entry.first_name,
+                                "lastName": entry.last_name,
+                                "club": entry.club_name,
+                                "class": entry.class_name,
+                                "status": matched_result.status,
+                                "time": matched_result.extensions.get(
+                                    "running_time", matched_result.time
+                                ),
+                                "error": None,
+                                "missingControls": missing_controls(result=matched_result),
+                                "light_status": "ok_registered",
+                            }
+                        else:
+                            # Step E — unassigned (zero or multiple matches)
+                            result.compute_result(controls=[], class_params=ClassParams())
+                            model.db.add_entry_result(
+                                event_id=event.id,
+                                chip=item.control_card,
+                                result=result,
+                                start=PersonRaceStart(),
+                            )
+                            res = {
+                                "entryTime": item.entry_time,
+                                "eventId": event.id,
+                                "controlCard": item.control_card,
+                                "firstName": None,
+                                "lastName": None,
+                                "club": None,
+                                "class": None,
+                                "status": result.status,
+                                "time": None,
+                                "error": "No unique matching course",
+                                "light_status": "unassigned",
+                            }
+            elif item.entry_type == "cardInserted":
+                res = {"eventId": event.id, "controlCard": item.control_card}
+            else:
+                res = {"eventId": event.id}
         else:
-            res = {"eventId": event.id}
+            if item.entry_type == "cardRead":
+                result = item.result
+
+                entries = model.db.get_entries(event_id=event.id)
+                entries_control_card = [e for e in entries if e.chip == item.control_card]
+                assigned_entries = [
+                    e for e in entries_control_card if e.class_name is not None
+                ]
+                unassigned_entries = [
+                    e for e in entries_control_card if e.class_name is None
+                ]
+
+                for entry in assigned_entries:
+                    r = entry.result
+                    if r is not None and r.same_si_punches(other=result):
+                        # result exists and is assigned to a competitor => nothing to do
+                        res = {
+                            "entryTime": item.entry_time,
+                            "eventId": event.id,
+                            "controlCard": entry.chip,
+                            "firstName": entry.first_name,
+                            "lastName": entry.last_name,
+                            "club": entry.club_name,
+                            "class": entry.class_name,
+                            "status": r.status,
+                            "time": r.extensions.get("running_time", r.time),
+                            "error": None,
+                            "missingControls": missing_controls(result=r),
+                        }
+                        break
+                else:
+                    # check if result is already read out
+                    unassigned_entry = None
+                    for entry in unassigned_entries:
+                        if entry.result.same_si_punches(other=result):
+                            unassigned_entry = entry
+                            break
+
+                    # result can be assigned to an entry if
+                    #   (1) there is exactly one entry without result
+                    #   (2) there is no unassigned entry or one unassigned entry with same result
+                    if (
+                        len(assigned_entries) == 1
+                        and not assigned_entries[0].result.has_punches()
+                        and (
+                            len(unassigned_entries) == 0
+                            or len(unassigned_entries) == 1
+                            and unassigned_entries[0].result.same_si_punches(other=result)
+                        )
+                    ):
+                        entry = assigned_entries[0]
+                        try:
+                            class_ = model.db.get_class(id=entry.class_id)
+                            course_id = class_.course_id
+                            class_params = class_.params
+                            controls = model.db.get_course(id=course_id).controls
+                        except KeyError:
+                            class_params = ClassParams()
+                            controls = []
+
+                        result.compute_result(
+                            controls=controls,
+                            class_params=class_params,
+                            start_time=entry.start.start_time,
+                            year=int(entry.year) if entry.year is not None else None,
+                            gender=entry.gender,
+                        )
+                        model.db.update_entry_result(
+                            id=entry.id,
+                            chip=entry.chip,
+                            result=result,
+                            start=entry.start,
+                        )
+                        res = {
+                            "entryTime": item.entry_time,
+                            "eventId": event.id,
+                            "controlCard": entry.chip,
+                            "firstName": entry.first_name,
+                            "lastName": entry.last_name,
+                            "club": entry.club_name,
+                            "class": entry.class_name,
+                            "status": result.status,
+                            "time": result.extensions.get("running_time", result.time),
+                            "error": None,
+                            "missingControls": missing_controls(result=result),
+                        }
+                        cached_result.clear_cache(event_id=event.id, entry_id=entry.id)
+
+                        # if there is an unassigned entry with the same result, delete it
+                        if unassigned_entries == [unassigned_entry]:
+                            model.db.delete_entry(id=unassigned_entry.id)
+
+                    else:
+                        # create a new unassigned entry
+                        result.compute_result(controls=[], class_params=ClassParams())
+                        if unassigned_entry is None:
+                            model.db.add_entry_result(
+                                event_id=event.id,
+                                chip=item.control_card,
+                                result=result,
+                                start=PersonRaceStart(),
+                            )
+                        res = {
+                            "entryTime": item.entry_time,
+                            "eventId": event.id,
+                            "controlCard": item.control_card,
+                            "firstName": None,
+                            "lastName": None,
+                            "club": None,
+                            "class": None,
+                            "status": result.status,
+                            "time": None,
+                        }
+                        if len(assigned_entries) == 0:
+                            res["error"] = "Control card unknown"
+                        elif len(assigned_entries) >= 2:
+                            res["error"] = "There are several entries for this card"
+                        else:
+                            res["error"] = "There are other results for this card"
+
+            elif item.entry_type == "cardInserted":
+                res = {"eventId": event.id, "controlCard": item.control_card}
+            else:
+                res = {"eventId": event.id}
 
     return item.entry_type, event, res
 
