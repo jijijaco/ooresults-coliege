@@ -348,3 +348,161 @@ def test_second_reading_if_entry_already_exists(
     with db.transaction():
         entries = db.get_entries(event_id=event_id)
     assert len(entries) == 1
+
+
+@pytest.fixture
+def competitor_2(db: SqliteRepo) -> CompetitorType:
+    with db.transaction():
+        competitor_id = db.add_competitor(
+            first_name="John",
+            last_name="Smith",
+            club_id=None,
+            gender="M",
+            year=None,
+            chip="0000",
+        )
+        return db.get_competitor(id=competitor_id)
+
+
+def test_assign_name_creates_entry_for_new_competitor(
+    db: SqliteRepo,
+    event_id: int,
+    course_id: int,
+    class_id: int,
+):
+    """No competitor with this name; an unassigned entry exists; competitor is created and
+    entry is replaced with a registered one."""
+    with db.transaction():
+        db.add_entry_result(
+            event_id=event_id,
+            chip=CONTROL_CARD,
+            result=_ok_result(),
+            start=PersonRaceStart(),
+        )
+
+    event, res = model.results.assign_name_to_light_entry(
+        event_key="4711",
+        chip=CONTROL_CARD,
+        first_name="New",
+        last_name="Person",
+    )
+
+    assert event.id == event_id
+    assert res["light_status"] == "ok_registered"
+    assert res["status"] == ResultStatus.OK
+    assert res["firstName"] == "New"
+    assert res["lastName"] == "Person"
+    assert res["class"] == "Elite"
+    assert res["error"] is None
+
+    with db.transaction():
+        entries = db.get_entries(event_id=event_id)
+    assert len(entries) == 1
+    assert entries[0].chip == CONTROL_CARD
+    assert entries[0].class_name == "Elite"
+    assert entries[0].first_name == "New"
+
+
+def test_assign_name_updates_chip_for_existing_competitor(
+    db: SqliteRepo,
+    event_id: int,
+    course_id: int,
+    class_id: int,
+    competitor_2: CompetitorType,
+):
+    """Competitor exists with a different chip; unassigned entry exists with CONTROL_CARD;
+    chip is updated on the competitor and entry is replaced with a registered one."""
+    with db.transaction():
+        db.add_entry_result(
+            event_id=event_id,
+            chip=CONTROL_CARD,
+            result=_ok_result(),
+            start=PersonRaceStart(),
+        )
+
+    event, res = model.results.assign_name_to_light_entry(
+        event_key="4711",
+        chip=CONTROL_CARD,
+        first_name="John",
+        last_name="Smith",
+    )
+
+    assert event.id == event_id
+    assert res["light_status"] == "ok_registered"
+    assert res["firstName"] == "John"
+    assert res["lastName"] == "Smith"
+    assert res["class"] == "Elite"
+
+    with db.transaction():
+        updated = db.get_competitor(id=competitor_2.id)
+    assert updated.chip == CONTROL_CARD
+
+    with db.transaction():
+        entries = db.get_entries(event_id=event_id)
+    assert len(entries) == 1
+    assert entries[0].chip == CONTROL_CARD
+    assert entries[0].class_name == "Elite"
+
+
+def test_assign_name_creates_unassigned_if_no_course_match(
+    db: SqliteRepo,
+    event_id: int,
+    course_id: int,
+    class_id: int,
+):
+    """Unassigned entry exists but result has missing punches; no class matches so an
+    unassigned entry is created."""
+    with db.transaction():
+        db.add_entry_result(
+            event_id=event_id,
+            chip=CONTROL_CARD,
+            result=_missing_punch_result(),
+            start=PersonRaceStart(),
+        )
+
+    event, res = model.results.assign_name_to_light_entry(
+        event_key="4711",
+        chip=CONTROL_CARD,
+        first_name="New",
+        last_name="Person",
+    )
+
+    assert event.id == event_id
+    assert res["light_status"] == "unassigned"
+    assert res["error"] == "No unique matching course"
+    assert res["firstName"] is None
+    assert res["class"] is None
+
+    with db.transaction():
+        entries = db.get_entries(event_id=event_id)
+    assert len(entries) == 1
+    assert entries[0].chip == CONTROL_CARD
+    assert entries[0].class_name is None
+
+
+def test_assign_name_deletes_old_entry(
+    db: SqliteRepo,
+    event_id: int,
+    course_id: int,
+    class_id: int,
+):
+    """After calling assign_name_to_light_entry the old unassigned entry is gone and
+    exactly one new entry exists."""
+    with db.transaction():
+        db.add_entry_result(
+            event_id=event_id,
+            chip=CONTROL_CARD,
+            result=_ok_result(),
+            start=PersonRaceStart(),
+        )
+
+    model.results.assign_name_to_light_entry(
+        event_key="4711",
+        chip=CONTROL_CARD,
+        first_name="New",
+        last_name="Person",
+    )
+
+    with db.transaction():
+        entries = db.get_entries(event_id=event_id)
+    assert len(entries) == 1
