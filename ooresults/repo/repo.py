@@ -192,6 +192,9 @@ class Repo:
     ) -> Optional[CompetitorType]:
         raise NotImplementedError
 
+    def get_competitor_by_chip(self, chip: str) -> Optional[CompetitorType]:
+        raise NotImplementedError
+
     def add_competitor(
         self, first_name, last_name, club_id, gender, year: Optional[int], chip
     ):

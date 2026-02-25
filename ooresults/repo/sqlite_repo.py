@@ -685,6 +685,39 @@ class SqliteRepo(Repo):
         else:
             return None
 
+    def get_competitor_by_chip(self, chip: str) -> Optional[CompetitorType]:
+        cur = self.db.execute(
+            """
+            SELECT
+                competitors.id,
+                competitors.first_name,
+                competitors.last_name,
+                competitors.gender,
+                competitors.year,
+                competitors.chip,
+                clubs.id AS club_id,
+                clubs.name AS club_name
+            FROM competitors
+            LEFT JOIN clubs ON competitors.club_id=clubs.id
+            WHERE competitors.chip=?""",
+            (chip,),
+        )
+
+        c = cur.fetchone()
+        if c:
+            return CompetitorType(
+                id=c["id"],
+                first_name=c["first_name"],
+                last_name=c["last_name"],
+                gender=c["gender"],
+                year=c["year"],
+                chip=c["chip"],
+                club_id=c["club_id"],
+                club_name=c["club_name"],
+            )
+        else:
+            return None
+
     def add_competitor(
         self,
         first_name: str,

@@ -210,6 +210,27 @@ def test_if_no_item_found_then_get_competitor_by_name_returns_none(db, competito
     assert c is None
 
 
+def test_get_competitor_by_chip(db, competitor_1_id, competitor_2_id, club_id):
+    with db.transaction():
+        c = db.get_competitor_by_chip(chip="1234567")
+    assert c == CompetitorType(
+        id=competitor_2_id,
+        first_name="Angela",
+        last_name="Merkel",
+        club_id=club_id,
+        club_name="OL Bundestag",
+        gender="F",
+        year=1957,
+        chip="1234567",
+    )
+
+
+def test_if_no_item_found_then_get_competitor_by_chip_returns_none(db, competitor_1_id):
+    with db.transaction():
+        c = db.get_competitor_by_chip(chip="9999999")
+    assert c is None
+
+
 def test_update_first_added_competitor(db, competitor_1_id, competitor_2_id, club_id):
     with db.transaction():
         db.update_competitor(
