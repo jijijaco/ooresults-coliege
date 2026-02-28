@@ -169,6 +169,8 @@ class WebSocketHandler:
                 data = message.get("controlCard", "")
             elif message.get("error", None) is not None:
                 data = render.si1_error(message=message)
+            elif message.get("light_status") == "second_reading":
+                data = render.si1_data(message=message)
             elif message.get("lastName", None) is not None:
                 data = render.si1_data(message=message)
             else:
@@ -445,6 +447,33 @@ class WebSocketHandler:
                                 # see https://stackoverflow.com/questions/26971026/handling-connection-loss-with-websockets
                                 if message == "__ping__":
                                     await websocket.send("__pong__")
+                                elif websocket.request.path == "/si1":
+                                    try:
+                                        msg_data = json.loads(message)
+                                        if msg_data.get("type") == "nameEntry":
+                                            conn_param = self.connections[websocket]
+                                            (event_res, res) = await asyncio.get_event_loop().run_in_executor(
+                                                executor=self.executor,
+                                                func=functools.partial(
+                                                    model.results.assign_name_to_light_entry,
+                                                    event_key=conn_param.event_key,
+                                                    chip=msg_data["chip"],
+                                                    first_name=msg_data["first_name"],
+                                                    last_name=msg_data["last_name"],
+                                                ),
+                                            )
+                                            self.cardreader_status[event_res.id] = "cardRead"
+                                            if "entryTime" in res:
+                                                res["entryTime"] = res["entryTime"].strftime("%H:%M:%S")
+                                            self.messages.append(res.copy())
+                                            await self.send_to_all(
+                                                event=copy.deepcopy(event_res), message=res.copy()
+                                            )
+                                            self.update_result.set()
+                                        else:
+                                            break
+                                    except Exception:
+                                        break
                                 else:
                                     print(f"WEBSOCKET RECEIVED, {addr}, {message}")
                                     break

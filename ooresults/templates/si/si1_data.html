@@ -22,6 +22,23 @@ def background(message) -> str:
 %>
 
 
+% if message.get("light_status") == "second_reading":
+<div id="si1.div" class="bgy">
+    <div style="height: 37vh;" class="vertical-center">
+        <p class="s2">Second reading: ${message["controlCard"]}</p>
+    </div>
+    <div style="height: 26vh;" class="vertical-center">
+        <p class="s1">
+            <input type="text" id="si1.firstName" placeholder="First name" size="15">
+            <input type="text" id="si1.lastName" placeholder="Last name" size="15">
+            <button onclick="ws.send(JSON.stringify({type:'nameEntry',chip:'${message['controlCard']}',first_name:document.getElementById('si1.firstName').value,last_name:document.getElementById('si1.lastName').value}))">Register</button>
+        </p>
+    </div>
+    <div style="height: 37vh;" class="vertical-center">
+        <p class="s2">&nbsp;</p>
+    </div>
+</div>
+% else:
 <div id="si1.div" class="${background(message)}">
     <div style="height: 37vh;" class="vertical-center">
         <p class="s2">${message["lastName"]}, ${message["firstName"]}</p>
@@ -33,3 +50,4 @@ def background(message) -> str:
         <p class="s2">${format(message.get("status", ResultStatus.INACTIVE), message.get("time", 0))}</p>
     </div>
 </div>
+% endif

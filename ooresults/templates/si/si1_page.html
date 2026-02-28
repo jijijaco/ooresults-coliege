@@ -125,8 +125,10 @@
                 start(ws_uri);
             };
 
+            var ws;
+
             function start(websocketServerLocation) {
-                var ws = new WebSocket(websocketServerLocation);
+                ws = new WebSocket(websocketServerLocation);
                 var tm = null;
                 var tp = null;
                 var elem = document.getElementById('page')
