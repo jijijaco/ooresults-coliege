@@ -17,6 +17,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
+import pathlib
 import subprocess
 import sys
 import tempfile
@@ -31,6 +32,8 @@ from selenium.webdriver.common.by import By
 @pytest.fixture(scope="session")
 def ooresults_server() -> None:
     with tempfile.TemporaryDirectory() as d_name:
+        config_path = pathlib.Path(d_name) / "config.ini"
+        config_path.write_text("[Server]\ndemo_reader = on\n")
         p = subprocess.Popen([sys.executable, "-m", "ooresults.server", "-p", d_name])
         yield
         p.kill()

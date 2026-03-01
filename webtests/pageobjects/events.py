@@ -91,6 +91,7 @@ class AddEventDialog:
         streaming_address: Optional[str] = None,
         streaming_key: Optional[str] = None,
         streaming_enabled: Optional[bool] = None,
+        light: Optional[bool] = None,
     ) -> None:
         self.wait()
 
@@ -120,6 +121,8 @@ class AddEventDialog:
             CheckboxControl(page=self.page, id="eve_streamingEnabled").set_state(
                 checked=streaming_enabled
             )
+        if light is not None:
+            CheckboxControl(page=self.page, id="eve_light").set_state(checked=light)
 
     def submit(self) -> None:
         elem = self.page.find_element(By.ID, "evnt.formAdd")
