@@ -116,13 +116,22 @@ def add_course(
     controls: list[str],
 ) -> None:
     with model.db.transaction(mode=TransactionMode.IMMEDIATE):
-        model.db.add_course(
+        course_id = model.db.add_course(
             event_id=event_id,
             name=name,
             length=length,
             climb=climb,
             controls=controls,
         )
+        event = model.db.get_event(id=event_id)
+        if event.light:
+            model.db.add_class(
+                event_id=event_id,
+                name=name,
+                short_name=None,
+                course_id=course_id,
+                params=ClassParams(),
+            )
 
 
 def update_course(

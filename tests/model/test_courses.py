@@ -58,6 +58,20 @@ def event_id(db: SqliteRepo) -> int:
 
 
 @pytest.fixture
+def light_event_id(db: SqliteRepo) -> int:
+    with db.transaction():
+        return db.add_event(
+            name="Light Event",
+            date=datetime.date(year=2020, month=1, day=1),
+            key=None,
+            publish=False,
+            series=None,
+            fields=[],
+            light=True,
+        )
+
+
+@pytest.fixture
 def course_1_id(db: SqliteRepo, event_id: int) -> int:
     with db.transaction():
         return db.add_course(
@@ -630,3 +644,44 @@ def test_update_course_data_recalculates_entry_result(
             ),
         ],
     )
+
+
+def test_add_course_for_light_event_auto_creates_class(light_event_id: int):
+    model.courses.add_course(
+        event_id=light_event_id,
+        name="Bahn A",
+        length=4500,
+        climb=90,
+        controls=["101", "102", "103"],
+    )
+
+    co = model.courses.get_courses(event_id=light_event_id)
+    assert len(co) == 1
+    course_id = co[0].id
+
+    cl = model.classes.get_classes(event_id=light_event_id)
+    assert len(cl) == 1
+    assert cl[0] == ClassInfoType(
+        id=cl[0].id,
+        name="Bahn A",
+        short_name=None,
+        course_id=course_id,
+        course_name="Bahn A",
+        course_length=4500,
+        course_climb=90,
+        number_of_controls=3,
+        params=ClassParams(),
+    )
+
+
+def test_add_course_for_regular_event_does_not_create_class(event_id: int):
+    model.courses.add_course(
+        event_id=event_id,
+        name="Bahn A",
+        length=4500,
+        climb=90,
+        controls=["101", "102", "103"],
+    )
+
+    cl = model.classes.get_classes(event_id=event_id)
+    assert len(cl) == 0

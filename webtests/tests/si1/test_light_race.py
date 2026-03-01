@@ -29,7 +29,6 @@ import pytest
 import websockets
 from selenium import webdriver
 
-from webtests.pageobjects.classes import ClassPage
 from webtests.pageobjects.competitors import CompetitorPage
 from webtests.pageobjects.courses import CoursePage
 from webtests.pageobjects.entries import EntryPage
@@ -42,7 +41,7 @@ EVENT_KEY = "test-light-key"
 CHIP = "87654321"
 CONTROL = "101"
 COURSE = "TestCourse"
-CLASS = "Runners"
+CLASS = COURSE  # auto-created by add_course for light events
 FIRST_NAME = "Jan"
 LAST_NAME = "Meier"
 
@@ -83,20 +82,14 @@ def setup_light_event(page: webdriver.Remote) -> None:
     event_page.table.select_row(2)  # select the new event
 
     # 2. Courses tab — create course with single control
+    # (adding a course to a light event auto-creates a matching class)
     Tabs(page=page).select(text="Courses")
     course_page = CoursePage(page=page)
     dialog = course_page.actions.add()
     dialog.enter_values(name=COURSE, controls=CONTROL)
     dialog.submit()
 
-    # 3. Classes tab — create class assigned to course
-    Tabs(page=page).select(text="Classes")
-    class_page = ClassPage(page=page)
-    dialog = class_page.actions.add()
-    dialog.enter_values(name=CLASS, course=COURSE)
-    dialog.submit()
-
-    # 4. Competitors tab — create competitor with chip
+    # 3. Competitors tab — create competitor with chip
     Tabs(page=page).select(text="Competitors")
     comp_page = CompetitorPage(page=page)
     dialog = comp_page.actions.add()
@@ -166,7 +159,7 @@ LOG_FILE = (
 LOG_EVENT_NAME = "Log Race Test"
 LOG_EVENT_KEY = "log-race-key"
 LOG_COURSE = "LogCourse"
-LOG_CLASS = "LogRunners"
+LOG_CLASS = LOG_COURSE  # auto-created by add_course for light events
 LOG_CONTROLS = "121-124-122-123"
 LOG_COMPETITORS = [
     ("7379879", "Alice", "Smith"),
@@ -224,20 +217,14 @@ def setup_log_race_event(page: webdriver.Remote) -> None:
     event_page.table.select_row(2)  # select the new event
 
     # 2. Courses tab — create course with four controls
+    # (adding a course to a light event auto-creates a matching class)
     Tabs(page=page).select(text="Courses")
     course_page = CoursePage(page=page)
     dialog = course_page.actions.add()
     dialog.enter_values(name=LOG_COURSE, controls=LOG_CONTROLS)
     dialog.submit()
 
-    # 3. Classes tab — create class assigned to course
-    Tabs(page=page).select(text="Classes")
-    class_page = ClassPage(page=page)
-    dialog = class_page.actions.add()
-    dialog.enter_values(name=LOG_CLASS, course=LOG_COURSE)
-    dialog.submit()
-
-    # 4. Competitors tab — create 6 competitors
+    # 3. Competitors tab — create 6 competitors
     Tabs(page=page).select(text="Competitors")
     comp_page = CompetitorPage(page=page)
     for chip, first_name, last_name in LOG_COMPETITORS:
