@@ -32,6 +32,8 @@ import urllib3
 import websockets
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import StaleElementReferenceException
+from selenium.webdriver.support.ui import Select
 
 from webtests.pageobjects.competitors import CompetitorPage
 from webtests.pageobjects.courses import CoursePage
@@ -52,6 +54,10 @@ LAST_NAME = "Meier"
 UNKNOWN_CHIP = "99999999"   # not registered to any competitor
 ASSIGN_FIRST = "Alice"
 ASSIGN_LAST = "Test"
+
+# Chips used only in the dropdown colour tests — must never be registered as competitors
+UNKNOWN_CHIP_GREEN = "11111111"
+UNKNOWN_CHIP_RED = "22222222"
 
 
 def send_card_read(event_key: str, chip: str, controls: list[str]) -> None:
@@ -248,6 +254,106 @@ def test_si2_needs_assignment_form(
             pytest.fail(
                 f"Assigned entry for chip {UNKNOWN_CHIP} did not appear within 10 s"
             )
+
+
+def _open_si2_window(page: webdriver.Remote) -> str:
+    """Open /si2 in a new window, wait for WebSocket, return original window handle."""
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    r = requests.get("https://localhost:8080/si1", auth=("admin", "admin"), verify=False)
+    m = re.search(r'var event_id = "(\d+)"', r.text)
+    assert m, "Could not find event_id in /si1 response"
+    event_id = m.group(1)
+
+    original_window = page.current_window_handle
+    page.execute_script("window.open('');")
+    page.switch_to.window(page.window_handles[-1])
+    page.get(f"https://admin:admin@localhost:8080/si2?id={event_id}")
+
+    deadline = time.monotonic() + 15
+    while True:
+        try:
+            page.find_element(By.ID, "si2.messages")
+            break
+        except Exception:
+            pass
+        time.sleep(0.5)
+        if time.monotonic() > deadline:
+            pytest.fail("/si2 page did not connect within 15 s")
+    return original_window
+
+
+def _wait_for_assignment_form(page: webdriver.Remote) -> None:
+    """Poll until si2.classId appears (yellow form rendered)."""
+    deadline = time.monotonic() + 15
+    while True:
+        try:
+            page.find_element(By.ID, "si2.classId")
+            break
+        except Exception:
+            pass
+        time.sleep(0.5)
+        if time.monotonic() > deadline:
+            pytest.fail("Assignment form (si2.classId) did not appear within 15 s")
+
+
+def test_si2_dropdown_green_on_single_match(
+    page: webdriver.Remote,
+    entry_page_clean: EntryPage,
+) -> None:
+    """
+    Unknown chip punching the one course control → 1 class match → green select,
+    CLASS pre-selected.
+    """
+    original_window = _open_si2_window(page)
+    try:
+        send_card_read(event_key=EVENT_KEY, chip=UNKNOWN_CHIP_GREEN, controls=[CONTROL])
+        _wait_for_assignment_form(page)
+
+        elem = page.find_element(By.ID, "si2.classId")
+        style = elem.get_attribute("style") or ""
+        assert "#70ff70" in style or "rgb(112, 255, 112)" in style, \
+            f"Expected green (#70ff70 or rgb(112, 255, 112)) in style, got: {style!r}"
+
+        sel = Select(elem)
+        assert sel.first_selected_option.text == CLASS
+    finally:
+        page.close()
+        page.switch_to.window(original_window)
+
+
+def test_si2_dropdown_red_on_no_match(
+    page: webdriver.Remote,
+    entry_page_clean: EntryPage,
+) -> None:
+    """
+    Unknown chip with no controls punched → 0 class matches → red select,
+    placeholder option '--' shown first.
+    """
+    original_window = _open_si2_window(page)
+    try:
+        send_card_read(event_key=EVENT_KEY, chip=UNKNOWN_CHIP_RED, controls=[])
+        _wait_for_assignment_form(page)
+
+        deadline = time.monotonic() + 5
+        while True:
+            try:
+                elem = page.find_element(By.ID, "si2.classId")
+                style = elem.get_attribute("style") or ""
+                break
+            except StaleElementReferenceException:
+                if time.monotonic() > deadline:
+                    raise
+                time.sleep(0.1)
+
+        assert "#ff7070" in style or "rgb(255, 112, 112)" in style, \
+            f"Expected red (#ff7070 or rgb(255, 112, 112)) in style, got: {style!r}"
+
+        sel = Select(elem)
+        assert sel.options[0].get_attribute("value") == ""
+        assert sel.options[0].text == "--"
+    finally:
+        page.close()
+        page.switch_to.window(original_window)
 
 
 # ---------------------------------------------------------------------------

@@ -62,9 +62,13 @@ def missing(status: ResultStatus, missing_controls: List[str]) -> str:
     &nbsp;
     <input type="text" id="si2.firstName" value="${pending_assignment.get('firstName') or ''}" placeholder="First name" size="15">
     <input type="text" id="si2.lastName"  value="${pending_assignment.get('lastName')  or ''}" placeholder="Last name"  size="15">
-    <select id="si2.classId">
+    <% matched = pending_assignment.get("matched_classes", []) %>
+    <select id="si2.classId" style="background-color: ${'#70ff70' if len(matched) == 1 else '#ff7070'}">
+        % if len(matched) != 1:
+        <option value="">--</option>
+        % endif
         % for cls in pending_assignment.get("classes", []):
-        <option value="${cls['id']}">${cls['name']}</option>
+        <option value="${cls['id']}"${ ' selected' if len(matched) == 1 and matched[0]['id'] == cls['id'] else ''}>${cls['name']}</option>
         % endfor
     </select>
     <button onclick="ws.send(JSON.stringify({type:'assignEntry',entry_id:${pending_assignment['entry_id']},first_name:document.getElementById('si2.firstName').value,last_name:document.getElementById('si2.lastName').value,class_id:parseInt(document.getElementById('si2.classId').value)}))">Assign</button>

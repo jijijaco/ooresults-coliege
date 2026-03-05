@@ -233,6 +233,9 @@ def test_needs_assignment_on_unknown_chip(
     assert len(res["classes"]) == 1
     assert res["classes"][0]["name"] == "Elite"
     assert res["classes"][0]["id"] == class_id
+    assert len(res["matched_classes"]) == 1
+    assert res["matched_classes"][0]["name"] == "Elite"
+    assert res["matched_classes"][0]["id"] == class_id
 
     with db.transaction():
         entries = db.get_entries(event_id=event_id)
@@ -270,6 +273,7 @@ def test_needs_assignment_on_missing_punch(
     assert isinstance(res["entry_id"], int)
     assert len(res["classes"]) == 1
     assert res["classes"][0]["name"] == "Elite"
+    assert res["matched_classes"] == []
 
     with db.transaction():
         entries = db.get_entries(event_id=event_id)
@@ -314,6 +318,7 @@ def test_needs_assignment_on_multiple_matching_classes(
     assert res["class"] is None
     assert "entry_id" in res
     assert len(res["classes"]) == 2
+    assert len(res["matched_classes"]) == 2
 
     with db.transaction():
         entries = db.get_entries(event_id=event_id)
@@ -365,6 +370,8 @@ def test_second_reading_creates_new_entry_and_preserves_old(
     assert "entry_id" in res
     assert len(res["classes"]) == 1
     assert res["classes"][0]["name"] == "Elite"
+    assert len(res["matched_classes"]) == 1
+    assert res["matched_classes"][0]["name"] == "Elite"
 
     # Both entries must still exist: person A's entry + the new unassigned one
     with db.transaction():

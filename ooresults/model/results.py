@@ -136,6 +136,18 @@ def store_cardreader_result(
                         result=stored_result,
                         start=PersonRaceStart(),
                     )
+                    matched_classes_data = []
+                    for class_ in classes:
+                        if class_.course_id is None:
+                            continue
+                        try:
+                            cls_controls = model.db.get_course(id=class_.course_id).controls
+                        except KeyError:
+                            continue
+                        r = copy.deepcopy(result)
+                        r.compute_result(controls=cls_controls, class_params=class_.params)
+                        if r.status == ResultStatus.OK:
+                            matched_classes_data.append({"id": class_.id, "name": class_.name})
                     res = {
                         "entryTime": item.entry_time,
                         "eventId": event.id,
@@ -148,6 +160,7 @@ def store_cardreader_result(
                         "time": None,
                         "entry_id": new_entry_id,
                         "classes": classes_with_course,
+                        "matched_classes": matched_classes_data,
                         "light_status": "needs_assignment",
                     }
                 else:
@@ -164,6 +177,18 @@ def store_cardreader_result(
                             result=unassigned_result,
                             start=PersonRaceStart(),
                         )
+                        matched_classes_data = []
+                        for class_ in classes:
+                            if class_.course_id is None:
+                                continue
+                            try:
+                                cls_controls = model.db.get_course(id=class_.course_id).controls
+                            except KeyError:
+                                continue
+                            r = copy.deepcopy(result)
+                            r.compute_result(controls=cls_controls, class_params=class_.params)
+                            if r.status == ResultStatus.OK:
+                                matched_classes_data.append({"id": class_.id, "name": class_.name})
                         res = {
                             "entryTime": item.entry_time,
                             "eventId": event.id,
@@ -176,6 +201,7 @@ def store_cardreader_result(
                             "time": None,
                             "entry_id": new_entry_id,
                             "classes": classes_with_course,
+                            "matched_classes": matched_classes_data,
                             "light_status": "needs_assignment",
                         }
                     else:
@@ -253,6 +279,7 @@ def store_cardreader_result(
                                 "time": None,
                                 "entry_id": new_entry_id,
                                 "classes": classes_with_course,
+                                "matched_classes": [{"id": c.id, "name": c.name} for c, _ in matching],
                                 "light_status": "needs_assignment",
                             }
             elif item.entry_type == "cardInserted":
