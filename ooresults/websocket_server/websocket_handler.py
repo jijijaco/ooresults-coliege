@@ -158,18 +158,21 @@ class WebSocketHandler:
         if conn.request.path == "/si2":
             stream_status = streaming_status.status.get(id=event.id)
             print("stream_status:", stream_status)
+            last = self.messages[-1] if self.messages else {}
+            pending = last if last.get("eventId") == event.id and last.get("light_status") == "needs_assignment" else None
             data = render.si2_data(
                 status=status,
                 stream_status=stream_status,
                 event=event,
                 messages=self.messages,
+                pending_assignment=pending,
             )
         else:
             if status != "cardRead":
                 data = message.get("controlCard", "")
             elif message.get("error", None) is not None:
                 data = render.si1_error(message=message)
-            elif message.get("light_status") == "second_reading":
+            elif message.get("light_status") == "needs_assignment":
                 data = render.si1_data(message=message)
             elif message.get("lastName", None) is not None:
                 data = render.si1_data(message=message)
@@ -447,24 +450,34 @@ class WebSocketHandler:
                                 # see https://stackoverflow.com/questions/26971026/handling-connection-loss-with-websockets
                                 if message == "__ping__":
                                     await websocket.send("__pong__")
-                                elif websocket.request.path == "/si1":
+                                elif websocket.request.path in ("/si1", "/si2"):
                                     try:
                                         msg_data = json.loads(message)
-                                        if msg_data.get("type") == "nameEntry":
+                                        if msg_data.get("type") == "assignEntry":
                                             conn_param = self.connections[websocket]
                                             (event_res, res) = await asyncio.get_event_loop().run_in_executor(
                                                 executor=self.executor,
                                                 func=functools.partial(
-                                                    model.results.assign_name_to_light_entry,
+                                                    model.results.assign_entry_to_light_entry,
                                                     event_key=conn_param.event_key,
-                                                    chip=msg_data["chip"],
+                                                    entry_id=msg_data["entry_id"],
                                                     first_name=msg_data["first_name"],
                                                     last_name=msg_data["last_name"],
+                                                    class_id=msg_data["class_id"],
                                                 ),
                                             )
                                             self.cardreader_status[event_res.id] = "cardRead"
                                             if "entryTime" in res:
                                                 res["entryTime"] = res["entryTime"].strftime("%H:%M:%S")
+                                            card = res.get("controlCard")
+                                            self.messages = [
+                                                m for m in self.messages
+                                                if not (
+                                                    m.get("eventId") == event_res.id
+                                                    and m.get("light_status") == "needs_assignment"
+                                                    and m.get("controlCard") == card
+                                                )
+                                            ]
                                             self.messages.append(res.copy())
                                             await self.send_to_all(
                                                 event=copy.deepcopy(event_res), message=res.copy()

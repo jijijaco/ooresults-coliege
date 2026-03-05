@@ -244,7 +244,7 @@ class EntryPage:
         return self.page.find_element(By.ID, "entr.event_date").text
 
     def delete_entries(self):
-        for i in range(self.table.nr_of_rows() - 1):
+        while self.table.nr_of_rows() > 1:
             self.table.select_row(2)
             self.actions.delete().ok()
 

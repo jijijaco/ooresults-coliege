@@ -2,6 +2,7 @@
 ## stream_status: Optional[Status]
 ## event: EventType
 ## messages: List[Dict]
+## pending_assignment: Optional[Dict]
 
 
 <%!
@@ -54,6 +55,21 @@ def missing(status: ResultStatus, missing_controls: List[str]) -> str:
                 return str(len(missing_controls)) + " controls"
 %>
 
+
+% if pending_assignment:
+<div style="background-color:#ffff00; padding: 12px; margin-bottom: 8px; border: 2px solid #cccc00;">
+    <strong>Assign chip: ${pending_assignment["controlCard"]}</strong>
+    &nbsp;
+    <input type="text" id="si2.firstName" value="${pending_assignment.get('firstName') or ''}" placeholder="First name" size="15">
+    <input type="text" id="si2.lastName"  value="${pending_assignment.get('lastName')  or ''}" placeholder="Last name"  size="15">
+    <select id="si2.classId">
+        % for cls in pending_assignment.get("classes", []):
+        <option value="${cls['id']}">${cls['name']}</option>
+        % endfor
+    </select>
+    <button onclick="ws.send(JSON.stringify({type:'assignEntry',entry_id:${pending_assignment['entry_id']},first_name:document.getElementById('si2.firstName').value,last_name:document.getElementById('si2.lastName').value,class_id:parseInt(document.getElementById('si2.classId').value)}))">Assign</button>
+</div>
+% endif
 
 <div id="cls.event">
     <table style="text-align: left">

@@ -119,9 +119,23 @@ def store_cardreader_result(
                 result = item.result
                 entries = model.db.get_entries(event_id=event.id)
                 entries_with_chip = [e for e in entries if e.chip == item.control_card]
+                classes = model.db.get_classes(event_id=event.id)
+                classes_with_course = [
+                    {"id": c.id, "name": c.name}
+                    for c in classes
+                    if c.course_id is not None
+                ]
 
-                # Step A — second-reading check
+                # Step A — second-reading check: chip already has an entry
                 if entries_with_chip:
+                    stored_result = copy.deepcopy(result)
+                    stored_result.compute_result(controls=[], class_params=ClassParams())
+                    new_entry_id = model.db.add_entry_result(
+                        event_id=event.id,
+                        chip=item.control_card,
+                        result=stored_result,
+                        start=PersonRaceStart(),
+                    )
                     res = {
                         "entryTime": item.entry_time,
                         "eventId": event.id,
@@ -130,9 +144,11 @@ def store_cardreader_result(
                         "lastName": None,
                         "club": None,
                         "class": None,
-                        "status": result.status,
+                        "status": stored_result.status,
                         "time": None,
-                        "light_status": "second_reading",
+                        "entry_id": new_entry_id,
+                        "classes": classes_with_course,
+                        "light_status": "needs_assignment",
                     }
                 else:
                     # Step B — competitor lookup by chip
@@ -140,11 +156,12 @@ def store_cardreader_result(
 
                     if competitor is None:
                         # Step E — unassigned (unknown chip)
-                        result.compute_result(controls=[], class_params=ClassParams())
-                        model.db.add_entry_result(
+                        unassigned_result = copy.deepcopy(result)
+                        unassigned_result.compute_result(controls=[], class_params=ClassParams())
+                        new_entry_id = model.db.add_entry_result(
                             event_id=event.id,
                             chip=item.control_card,
-                            result=result,
+                            result=unassigned_result,
                             start=PersonRaceStart(),
                         )
                         res = {
@@ -155,14 +172,14 @@ def store_cardreader_result(
                             "lastName": None,
                             "club": None,
                             "class": None,
-                            "status": result.status,
+                            "status": unassigned_result.status,
                             "time": None,
-                            "error": "Control card unknown",
-                            "light_status": "unassigned",
+                            "entry_id": new_entry_id,
+                            "classes": classes_with_course,
+                            "light_status": "needs_assignment",
                         }
                     else:
                         # Step C — course match: try every class with a course
-                        classes = model.db.get_classes(event_id=event.id)
                         matching = []
                         for class_ in classes:
                             if class_.course_id is None:
@@ -216,25 +233,27 @@ def store_cardreader_result(
                             }
                         else:
                             # Step E — unassigned (zero or multiple matches)
-                            result.compute_result(controls=[], class_params=ClassParams())
-                            model.db.add_entry_result(
+                            unassigned_result = copy.deepcopy(result)
+                            unassigned_result.compute_result(controls=[], class_params=ClassParams())
+                            new_entry_id = model.db.add_entry_result(
                                 event_id=event.id,
                                 chip=item.control_card,
-                                result=result,
+                                result=unassigned_result,
                                 start=PersonRaceStart(),
                             )
                             res = {
                                 "entryTime": item.entry_time,
                                 "eventId": event.id,
                                 "controlCard": item.control_card,
-                                "firstName": None,
-                                "lastName": None,
+                                "firstName": competitor.first_name,
+                                "lastName": competitor.last_name,
                                 "club": None,
                                 "class": None,
-                                "status": result.status,
+                                "status": unassigned_result.status,
                                 "time": None,
-                                "error": "No unique matching course",
-                                "light_status": "unassigned",
+                                "entry_id": new_entry_id,
+                                "classes": classes_with_course,
+                                "light_status": "needs_assignment",
                             }
             elif item.entry_type == "cardInserted":
                 res = {"eventId": event.id, "controlCard": item.control_card}
@@ -369,8 +388,12 @@ def store_cardreader_result(
     return item.entry_type, event, res
 
 
-def assign_name_to_light_entry(
-    event_key: str, chip: str, first_name: str, last_name: str
+def assign_entry_to_light_entry(
+    event_key: str,
+    entry_id: int,
+    first_name: str,
+    last_name: str,
+    class_id: int,
 ) -> tuple[EventType, dict]:
     def missing_controls(result: result_type.PersonRaceResult) -> list[str]:
         if result.finish_time is None:
@@ -392,14 +415,13 @@ def assign_name_to_light_entry(
         else:
             raise EventNotFoundError(f'Event for key "{event_key}" not found')
 
-        # 2. Recover stored result
-        entries = model.db.get_entries(event_id=event.id)
-        entries_with_chip = [e for e in entries if e.chip == chip]
-        stored_result = copy.deepcopy(entries_with_chip[0].result)
+        # 2. Recover stored result for the specific entry
+        target_entry = model.db.get_entry(id=entry_id)
+        stored_result = copy.deepcopy(target_entry.result)
+        chip = target_entry.chip
 
-        # 3. Delete existing chip entries
-        for e in entries_with_chip:
-            model.db.delete_entry(id=e.id)
+        # 3. Delete only that specific entry
+        model.db.delete_entry(id=entry_id)
 
         # 4. Find-or-create competitor, update chip
         competitor = model.db.get_competitor_by_name(
@@ -427,80 +449,50 @@ def assign_name_to_light_entry(
             )
             competitor = model.db.get_competitor(id=competitor.id)
 
-        # 5. Re-run course match (Steps C–E)
-        classes = model.db.get_classes(event_id=event.id)
-        matching = []
-        for class_ in classes:
-            if class_.course_id is None:
-                continue
-            try:
-                controls = model.db.get_course(id=class_.course_id).controls
-            except KeyError:
-                continue
-            r = copy.deepcopy(stored_result)
-            r.compute_result(
-                controls=controls,
-                class_params=class_.params,
-                start_time=None,
-                year=int(competitor.year) if competitor.year else None,
-                gender=competitor.gender,
-            )
-            if r.status == ResultStatus.OK:
-                matching.append((class_, r))
+        # 5. Compute result for the specified class
+        class_ = model.db.get_class(id=class_id)
+        try:
+            controls = model.db.get_course(id=class_.course_id).controls
+        except (KeyError, AttributeError):
+            controls = []
+        matched_result = copy.deepcopy(stored_result)
+        matched_result.compute_result(
+            controls=controls,
+            class_params=class_.params,
+            start_time=None,
+            year=int(competitor.year) if competitor.year else None,
+            gender=competitor.gender,
+        )
 
-        if len(matching) == 1:
-            # Step D — auto-register
-            class_, matched_result = matching[0]
-            entry_id = model.db.add_entry(
-                event_id=event.id,
-                competitor_id=competitor.id,
-                class_id=class_.id,
-                club_id=competitor.club_id,
-                not_competing=False,
-                chip=chip,
-                fields={},
-                result=matched_result,
-                start=PersonRaceStart(),
-            )
-            entry = model.db.get_entry(id=entry_id)
-            cached_result.clear_cache(event_id=event.id, entry_id=entry_id)
-            res = {
-                "eventId": event.id,
-                "controlCard": entry.chip,
-                "firstName": entry.first_name,
-                "lastName": entry.last_name,
-                "club": entry.club_name,
-                "class": entry.class_name,
-                "status": matched_result.status,
-                "time": matched_result.extensions.get(
-                    "running_time", matched_result.time
-                ),
-                "error": None,
-                "missingControls": missing_controls(result=matched_result),
-                "light_status": "ok_registered",
-            }
-        else:
-            # Step E — unassigned (zero or multiple matches)
-            result = copy.deepcopy(stored_result)
-            result.compute_result(controls=[], class_params=ClassParams())
-            model.db.add_entry_result(
-                event_id=event.id,
-                chip=chip,
-                result=result,
-                start=PersonRaceStart(),
-            )
-            res = {
-                "eventId": event.id,
-                "controlCard": chip,
-                "firstName": None,
-                "lastName": None,
-                "club": None,
-                "class": None,
-                "status": result.status,
-                "time": None,
-                "error": "No unique matching course",
-                "light_status": "unassigned",
-            }
+        # 6. Create new entry for the competitor in the specified class
+        new_entry_id = model.db.add_entry(
+            event_id=event.id,
+            competitor_id=competitor.id,
+            class_id=class_id,
+            club_id=competitor.club_id,
+            not_competing=False,
+            chip=chip,
+            fields={},
+            result=matched_result,
+            start=PersonRaceStart(),
+        )
+        entry = model.db.get_entry(id=new_entry_id)
+        cached_result.clear_cache(event_id=event.id, entry_id=new_entry_id)
+        res = {
+            "eventId": event.id,
+            "controlCard": entry.chip,
+            "firstName": entry.first_name,
+            "lastName": entry.last_name,
+            "club": entry.club_name,
+            "class": entry.class_name,
+            "status": matched_result.status,
+            "time": matched_result.extensions.get(
+                "running_time", matched_result.time
+            ),
+            "error": None,
+            "missingControls": missing_controls(result=matched_result),
+            "light_status": "ok_registered",
+        }
 
     return event, res
 

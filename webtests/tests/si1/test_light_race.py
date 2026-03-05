@@ -22,12 +22,16 @@ import bz2
 import datetime
 import json
 import pathlib
+import re
 import ssl
 import time
 
 import pytest
+import requests
+import urllib3
 import websockets
 from selenium import webdriver
+from selenium.webdriver.common.by import By
 
 from webtests.pageobjects.competitors import CompetitorPage
 from webtests.pageobjects.courses import CoursePage
@@ -44,6 +48,10 @@ COURSE = "TestCourse"
 CLASS = COURSE  # auto-created by add_course for light events
 FIRST_NAME = "Jan"
 LAST_NAME = "Meier"
+
+UNKNOWN_CHIP = "99999999"   # not registered to any competitor
+ASSIGN_FIRST = "Alice"
+ASSIGN_LAST = "Test"
 
 
 def send_card_read(event_key: str, chip: str, controls: list[str]) -> None:
@@ -143,6 +151,103 @@ def test_auto_register_on_valid_card_read(
     assert row[5] == CHIP  # Chip
     assert row[7] == CLASS  # Class
     assert row[10] == "OK"  # Status
+
+
+def test_si2_needs_assignment_form(
+    page: webdriver.Remote,
+    entry_page_clean: EntryPage,
+) -> None:
+    """
+    Unknown chip on a light event → /si2 shows yellow assignment form;
+    filling it in and clicking Assign creates the entry.
+
+    Setup:  light event with one course (control 101) and one competitor (Jan Meier, 87654321).
+    Action: send card read for unknown chip 99999999 via /demo WebSocket;
+            open /si2 in a second browser window;
+            wait for the yellow form;
+            type first/last name, click Assign.
+    Expected: form disappears; Entries table shows chip 99999999 with class TestCourse,
+              first name Alice, last name Test.
+    """
+    # 1. Discover event_id from the /si1 page HTML
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    r = requests.get("https://localhost:8080/si1", auth=("admin", "admin"), verify=False)
+    m = re.search(r'var event_id = "(\d+)"', r.text)
+    assert m, "Could not find event_id in /si1 response"
+    event_id = m.group(1)
+
+    # 2. Open /si2 in a new browser window
+    original_window = page.current_window_handle
+    page.execute_script("window.open('');")
+    page.switch_to.window(page.window_handles[-1])
+    page.get(f"https://admin:admin@localhost:8080/si2?id={event_id}")
+
+    # 3. Wait for WebSocket to connect (messages table must be present)
+    deadline = time.monotonic() + 15
+    while True:
+        try:
+            page.find_element(By.ID, "si2.messages")
+            break
+        except Exception:
+            pass
+        time.sleep(0.5)
+        if time.monotonic() > deadline:
+            pytest.fail("/si2 page did not connect within 15 s")
+
+    # 4. Send a card read with an unknown chip → server emits needs_assignment
+    send_card_read(event_key=EVENT_KEY, chip=UNKNOWN_CHIP, controls=[CONTROL])
+
+    # 5. Wait for the yellow assignment form to appear
+    deadline = time.monotonic() + 15
+    while True:
+        try:
+            page.find_element(By.ID, "si2.firstName")
+            break
+        except Exception:
+            pass
+        time.sleep(0.5)
+        if time.monotonic() > deadline:
+            pytest.fail("needs_assignment form did not appear on /si2 within 15 s")
+
+    # 6. Fill in name (class dropdown already shows CLASS — only one class exists)
+    first_input = page.find_element(By.ID, "si2.firstName")
+    first_input.clear()
+    first_input.send_keys(ASSIGN_FIRST)
+    last_input = page.find_element(By.ID, "si2.lastName")
+    last_input.clear()
+    last_input.send_keys(ASSIGN_LAST)
+
+    # 7. Click Assign → browser sends assignEntry JSON over WebSocket
+    page.find_element(By.XPATH, "//button[text()='Assign']").click()
+
+    # 8. Wait for yellow form to disappear (server re-renders page without pending_assignment)
+    deadline = time.monotonic() + 10
+    while True:
+        if not page.find_elements(By.ID, "si2.firstName"):
+            break
+        time.sleep(0.5)
+        if time.monotonic() > deadline:
+            pytest.fail("Assignment form did not disappear within 10 s after Assign click")
+
+    # 9. Close the /si2 window and return to the admin page
+    page.close()
+    page.switch_to.window(original_window)
+
+    # 10. Poll the Entries table until the assigned entry is visible
+    deadline = time.monotonic() + 10
+    while True:
+        entry_page_clean.actions.reload()
+        time.sleep(0.5)
+        for i in range(1, entry_page_clean.table.nr_of_rows() + 1):
+            row = entry_page_clean.table.row(i=i)
+            if len(row) > 7 and row[5] == UNKNOWN_CHIP and row[7] == CLASS:
+                assert row[1] == ASSIGN_FIRST
+                assert row[2] == ASSIGN_LAST
+                return
+        if time.monotonic() > deadline:
+            pytest.fail(
+                f"Assigned entry for chip {UNKNOWN_CHIP} did not appear within 10 s"
+            )
 
 
 # ---------------------------------------------------------------------------

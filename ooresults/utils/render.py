@@ -121,9 +121,14 @@ def si2_data(
     stream_status: Optional[Status],
     event: EventType,
     messages: list[dict],
+    pending_assignment: Optional[dict] = None,
 ) -> str:
     return _si__si2_data.render(
-        status=status, stream_status=stream_status, event=event, messages=messages
+        status=status,
+        stream_status=stream_status,
+        event=event,
+        messages=messages,
+        pending_assignment=pending_assignment,
     )
 
 
